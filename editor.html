@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editor de Imágenes</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="editor">
+        <div id="content" style="padding-top:10px;">
+            <div style="padding-top: 20px;" id="image-container">
+                <button id="upload-new-photo">Subir imagen</button>
+                <canvas id="canvas"></canvas>
+                <div id="loading-indicator" style="display: none;"></div>
+            </div>
+
+            <div id="controls-container">
+                <div style="padding-top: 0px;"></div>
+                <div class="controls">
+                    <!-- Basic Filters -->
+                    <div class="control-group">
+                        <label for="brightness">Brightness:</label>
+                        <div class="custom-slider" data-setting="brightness">
+                            <div class="slider-track"></div>
+                            <div class="slider-handle" style="left: 50%;"></div>
+                            <span class="value-indicator" id="brightness-value">100%</span>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label for="contrast">Contrast:</label>
+                        <div class="custom-slider" data-setting="contrast">
+                            <div class="slider-track"></div>
+                            <div class="slider-handle" style="left: 50%;"></div>
+                            <span class="value-indicator" id="contrast-value">100%</span>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label for="grayscale">Grayscale:</label>
+                        <div class="custom-slider" data-setting="grayscale">
+                            <div class="slider-track"></div>
+                            <div class="slider-handle" style="left: 0%;"></div>
+                            <span class="value-indicator" id="grayscale-value">0%</span>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label for="vibrance">Vibrance:</label>
+                        <div class="custom-slider" data-setting="vibrance">
+                            <div class="slider-track"></div>
+                            <div class="slider-handle" style="left: 50%;"></div>
+                            <span class="value-indicator" id="vibrance-value">100%</span>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label for="highlights">Highlights:</label>
+                        <div class="custom-slider" data-setting="highlights">
+                            <div class="slider-track"></div>
+                            <div class="slider-handle" style="left: 50%;"></div>
+                            <span class="value-indicator" id="highlights-value">100%</span>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label for="shadows">Shadows:</label>
+                        <div class="custom-slider" data-setting="shadows">
+                            <div class="slider-track"></div>
+                            <div class="slider-handle" style="left: 50%;"></div>
+                            <span class="value-indicator" id="shadows-value">100%</span>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label for="noise">Noise:</label>
+                        <div class="custom-slider" data-setting="noise">
+                            <div class="slider-track"></div>
+                            <div class="slider-handle" style="left: 0%;"></div>
+                            <span class="value-indicator" id="noise-value">0%</span>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label for="exposure">Exposure:</label>
+                        <div class="custom-slider" data-setting="exposure">
+                            <div class="slider-track"></div>
+                            <div class="slider-handle" style="left: 50%;"></div>
+                            <span class="value-indicator" id="exposure-value">100%</span>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label for="temperature">Temperature:</label>
+                        <div class="custom-slider" data-setting="temperature">
+                            <div class="slider-track"></div>
+                            <div class="slider-handle" style="left: 50%;"></div>
+                            <span class="value-indicator" id="temperature-value">100%</span>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label for="saturation">Saturation:</label>
+                        <div class="custom-slider" data-setting="saturation">
+                            <div class="slider-track"></div>
+                            <div class="slider-handle" style="left: 50%;"></div>
+                            <span class="value-indicator" id="saturation-value">100%</span>
+                        </div>
+                    </div>
+                
+                    <!-- Glitch Effects -->
+                   
+                    <div class="control-group">
+                        <label for="glitch-chromatic">Chromatic (Horizontal):</label>
+                        <div class="custom-slider" data-setting="glitch-chromatic">
+                            <div class="slider-track"></div>
+                            <div class="slider-handle" style="left: 0%;"></div>
+                            <span class="value-indicator" id="glitch-chromatic-value">0%</span>
+                        </div>
+                    </div>
+                   
+                   
+                    <div class="control-group">
+                        <label for="glitch-chromatic-vertical">Chromatic (Vertical):</label>
+                        <div class="custom-slider" data-setting="glitch-chromatic-vertical">
+                            <div class="slider-track"></div>
+                            <div class="slider-handle" style="left: 0%;"></div>
+                            <span class="value-indicator" id="glitch-chromatic-vertical-value">0%</span>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label for="glitch-chromatic-diagonal">Chromatic (Diagonal):</label>
+                        <div class="custom-slider" data-setting="glitch-chromatic-diagonal">
+                            <div class="slider-track"></div>
+                            <div class="slider-handle" style="left: 0%;"></div>
+                            <span class="value-indicator" id="glitch-chromatic-diagonal-value">0%</span>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label for="glitch-pixel-shuffle">Pixel Shuffle:</label>
+                        <div class="custom-slider" data-setting="glitch-pixel-shuffle">
+                            <div class="slider-track"></div>
+                            <div class="slider-handle" style="left: 0%;"></div>
+                            <span class="value-indicator" id="glitch-pixel-shuffle-value">0%</span>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label for="glitch-rgb-split">RGB Split:</label>
+                        <div class="custom-slider" data-setting="glitch-rgb-split">
+                            <div class="slider-track"></div>
+                            <div class="slider-handle" style="left: 0%;"></div>
+                            <span class="value-indicator" id="glitch-rgb-split-value">0%</span>
+                        </div>
+                    </div>
+                
+                  
+                    <div class="control-group">
+                        <label for="glitch-vhs">VHS:</label>
+                        <div class="custom-slider" data-setting="glitch-vhs">
+                            <div class="slider-track"></div>
+                            <div class="slider-handle" style="left: 0%;"></div>
+                            <span class="value-indicator" id="glitch-vhs-value">0%</span>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label for="glitch-scanline">Scanline:</label>
+                        <div class="custom-slider" data-setting="glitch-scanline">
+                            <div class="slider-track"></div>
+                            <div class="slider-handle" style="left: 0%;"></div>
+                            <span class="value-indicator" id="glitch-scanline-value">0%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button id="undo">Deshacer</button>
+                    <button id="redo">Rehacer</button>
+                    <button id="restore">Restaurar</button>
+                    <button id="toggle-original">Ver Original</button>                
+                    <button id="download">Descargar Imagen</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de imagen -->
+    <div id="image-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">×</span>
+            <div class="modal-inner">
+                <img id="modal-image" src="" alt="Imagen ampliada">
+                <div id="modal-controls" class="controls"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cropping Modal -->
+    <div id="crop-modal" class="modal">
+        <div class="modal-content">
+            <span class="crop-close-btn">×</span>
+            <div class="crop-modal-inner">
+                <canvas id="crop-canvas"></canvas>
+                <div id="crop-controls"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

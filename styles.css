@@ -1,0 +1,515 @@
+/* Container for the entire layout */
+.editor {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    height: 100vh;
+}
+
+/* Container for image and controls */
+#content {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 1200px;
+}
+
+/* Canvas styling */
+#canvas, #original-canvas {
+    image-rendering: auto;
+    max-width: 600px;
+    max-height: 750px;
+    width: 100%;
+    height: auto;
+    margin-bottom: 20px;
+    cursor: pointer;
+}
+
+#original-canvas {
+    background-color: #eee;
+    margin-top: 100px;
+}
+
+#original-canvas:hover {
+    background-color: #ccc;
+}
+
+/* Image container: two canvases stacked one above the other */
+#image-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 80%;
+    padding-right: 50px;
+}
+
+canvas {
+    max-width: 100%;
+    max-height: 750px;
+    object-fit: contain;
+    margin-bottom: 20px;
+}
+
+/* Controls container */
+#controls-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: flex-start;
+    width: 40%;
+}
+
+/* Controls (sliders and labels) */
+.controls {
+    display: flex;
+    flex-direction: column;
+    width: 100% !important;
+    margin-top: 20px;
+}
+
+/* Each control (slider + label + value) */
+.control-group, .last-control-group {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    width: 100%;
+}
+
+.control-group label, .last-control-group label {
+    flex: 0 0 100px;
+    margin-right: 10px;
+    font-size: 14px;
+}
+
+.custom-slider {
+    flex: 1;
+    max-width: 150px;
+    margin: 0 10px;
+    position: relative;
+    height: 20px;
+}
+
+.slider-track {
+    width: 100%;
+    height: 8px;
+    background: #ddd;
+    border-radius: 5px;
+    border: 1px solid #bbb;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.slider-handle {
+    width: 15px;
+    height: 15px;
+    background: #000; /* Green handle color */
+    border-radius: 50%;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    border: 1px solid #000; /* Slightly darker green for border */
+    box-shadow: 0 0 2px rgba(0, 0, 0, 0.2);
+}
+
+.control-group .value-indicator, .last-control-group .value-indicator {
+    flex: 0 0 40px;
+    font-size: 14px;
+    font-weight: bold;
+    text-align: right;
+    position: static;
+    transform: none;
+}
+
+/* Action buttons */
+.action-buttons {
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+button {
+    margin-top: 0;
+    padding: 10px 20px;
+    background-color: #000;
+    color: white;
+    border: none;
+    cursor: pointer;
+    width: 100%;
+    max-width: 120px;
+    box-sizing: border-box;
+    border-radius: 5px;
+}
+
+button:hover {
+    background-color: #3e3e3e;
+}
+
+/* Specific glitch button styling */
+#glitch-scanline, #glitch-chromatic, #glitch-pixel,
+#glitch-databend, #glitch-wave, #glitch-bleed {
+    background-color: #ff4081; /* Distinct pinkish color for glitch effects */
+}
+
+#glitch-scanline:hover, #glitch-chromatic:hover, #glitch-pixel:hover,
+#glitch-databend:hover, #glitch-wave:hover, #glitch-bleed:hover {
+    background-color: #f50057;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    #content {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    #image-container {
+        width: 100%;
+        margin-bottom: 20px;
+        padding-right: 0;
+    }
+
+    #controls-container {
+        width: 100%;
+    }
+
+    .control-group, .last-control-group {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .control-group label, .last-control-group label {
+        flex: none;
+        margin-bottom: 5px;
+    }
+
+    .custom-slider {
+        max-width: 100%;
+        margin: 0;
+    }
+
+    .control-group .value-indicator, .last-control-group .value-indicator {
+        flex: none;
+        margin-top: 5px;
+    }
+
+    .action-buttons {
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    button {
+        max-width: 200px;
+    }
+}
+
+/* Estilos del modal */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+}
+
+.modal-content {
+    position: relative;
+    margin: 2% auto;
+    width: 95%;
+    max-width: 1200px;
+    padding: 20px;
+    background-color: #fff;
+    box-sizing: border-box;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.modal-inner {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+}
+
+#modal-image {
+    max-width: 70%;
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+}
+
+#modal-controls {
+    width: 30%;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+#modal-controls .control-group {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    width: 100%;
+}
+
+#modal-controls label {
+    flex: 0 0 100px;
+    margin-right: 10px;
+    font-size: 14px;
+}
+
+#modal-controls .custom-slider {
+    flex: 1;
+    max-width: 150px;
+    margin: 0 10px;
+    position: relative;
+    height: 20px;
+}
+
+#modal-controls .slider-track {
+    width: 100%;
+    height: 8px;
+    background: #ddd;
+    border-radius: 5px;
+    border: 1px solid #bbb;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+#modal-controls .slider-handle {
+    width: 15px;
+    height: 15px;
+    background: #000; /* Green handle color */
+    border-radius: 50%;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    border: 1px solid #040404; /* Slightly darker green for border */
+    box-shadow: 0 0 2px rgba(0, 0, 0, 0.2);
+}
+
+#modal-controls .value-indicator {
+    flex: 0 0 40px;
+    font-size: 14px;
+    font-weight: bold;
+    text-align: right;
+    position: static;
+    transform: none;
+}
+
+.close-btn, .crop-close-btn {
+    position: absolute;
+    top: 10px;
+    right: 20px;
+    font-size: 30px;
+    color: #333;
+    cursor: pointer;
+}
+
+.close-btn:hover, .crop-close-btn:hover {
+    color: #ff0000;
+}
+
+/* Crop Modal */
+#crop-modal {
+    max-width: 100vw;
+    max-height: 100vh;
+    overflow: auto;
+}
+#crop-canvas {
+    max-width: 100%;
+    max-height: 100%;
+}
+
+.crop-modal-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+#crop-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    width: 100%;
+    max-width: 400px;
+    padding: 10px;
+    background-color: #f9f9f9;
+    border-radius: 5px;
+}
+
+.crop-control-group {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.crop-control-group label {
+    flex: 0 0 80px;
+    font-size: 14px;
+}
+
+.crop-control-group input[type="range"] {
+    flex: 1;
+    margin: 0 10px;
+}
+
+.crop-control-group span {
+    flex: 0 0 40px;
+    font-size: 14px;
+    font-weight: bold;
+    text-align: right;
+    cursor: pointer;
+}
+
+.crop-button-group {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.crop-button-group button {
+    flex: 1;
+    padding: 10px;
+    background-color: #000;
+    color: white;
+    border: none;
+    cursor: pointer;
+    border-radius: 5px;
+}
+
+.crop-button-group button:hover {
+    background-color: #3e3e3e;
+}
+
+.crop-button-group #crop-skip {
+    background-color: #3e3e3e;
+}
+
+.crop-button-group #crop-skip:hover {
+    background-color: #4a4a4a;
+}
+
+.crop-lock-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.crop-lock-group input[type="checkbox"] {
+    margin: 0;
+}
+
+.crop-lock-group label {
+    font-size: 14px;
+}
+
+/* Responsive Crop Modal Design */
+@media (max-width: 768px) {
+    #crop-canvas {
+        max-width: 90vw;
+        max-height: 60vh;
+    }
+
+    #crop-controls {
+        max-width: 100%;
+        padding: 5px;
+    }
+
+    .crop-control-group {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .crop-control-group label {
+        margin-bottom: 5px;
+    }
+
+    .crop-control-group input[type="range"] {
+        width: 100%;
+        margin: 0;
+    }
+
+    .crop-control-group span {
+        margin-top: 5px;
+    }
+
+    .crop-button-group {
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .crop-button-group button {
+        width: 100%;
+    }
+}
+
+#upload-new-photo {
+    display: block; /* Visible by default */
+    padding: 10px 20px;
+    background-color: #000;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+#toggle-original {
+    padding: 10px 20px;
+    background-color: #000;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+#toggle-original:hover {
+    background-color: #3e3e3e;
+}
+#canvas {
+    max-width: 1920px;
+    max-height: 1080px;
+    display: block;
+    margin: 20px auto;
+}
+
+#upload-new-photo {
+    display: block; /* Visible by default */
+    padding: 10px 20px;
+    background-color: #000;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+#auto-enhance {
+    padding: 10px 20px;
+    background-color: #000;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+
+
+#loading-indicator {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 5px;
+    z-index: 1003;
+}
