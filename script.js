@@ -85,108 +85,7 @@ function triggerFileUpload() {
 }
 
 uploadNewPhotoButton.addEventListener('click', triggerFileUpload);
-// Replace this:
-// const controls = document.querySelectorAll('.controls input');
-// controls.forEach(control => { ... });
 
-// With this:
-const customSliders = document.querySelectorAll('.custom-slider');
-function updateSliderGradient(slider, startColor = '#000000', endColor = '#000000') {
-    const track = slider.querySelector('.slider-track');
-    track.style.background = `linear-gradient(to right, ${startColor}, ${endColor})`;
-}
-function updateSliderPosition(slider) {
-    const thumb = slider.querySelector('.slider-thumb');
-    const min = parseInt(slider.dataset.min);
-    const max = parseInt(slider.dataset.max);
-    const value = parseInt(slider.dataset.value);
-    const percentage = ((value - min) / (max - min)) * 100;
-    thumb.style.left = `${percentage}%`;
-}
-
-function updateControlIndicators() {
-    customSliders.forEach(slider => {
-        const id = slider.dataset.id;
-        const value = parseInt(slider.dataset.value);
-        const indicator = document.getElementById(`${id}-value`);
-        if (indicator) {
-            indicator.textContent = id === 'kaleidoscope-segments' ? `${value}` : `${value}%`;
-        }
-    });
-}
-
-// Initialize slider positions
-customSliders.forEach(slider => {
-    updateSliderPosition(slider);
-
-    let isDragging = false;
-
-    const thumb = slider.querySelector('.slider-thumb');
-    thumb.addEventListener('mousedown', (e) => {
-        isDragging = true;
-        e.preventDefault();
-    });
-
-    document.addEventListener('mousemove', (e) => {
-        if (!isDragging) return;
-        const rect = slider.getBoundingClientRect();
-        const min = parseInt(slider.dataset.min);
-        const max = parseInt(slider.dataset.max);
-        let newPos = (e.clientX - rect.left) / rect.width;
-        newPos = Math.max(0, Math.min(1, newPos)); // Clamp between 0 and 1
-        const newValue = Math.round(min + newPos * (max - min));
-        slider.dataset.value = newValue;
-        settings[slider.dataset.id] = newValue;
-        updateSliderPosition(slider);
-        updateControlIndicators();
-
-        if (slider.dataset.id.startsWith('glitch-') || slider.dataset.id.startsWith('pixel-') || 
-            slider.dataset.id.startsWith('kaleidoscope-') || slider.dataset.id === 'vortex-twist' || 
-            slider.dataset.id === 'edge-detect') {
-            lastAppliedEffect = slider.dataset.id;
-        }
-    });
-
-    document.addEventListener('mouseup', () => {
-        if (isDragging) {
-            isDragging = false;
-            redrawImage(); // Trigger redraw after dragging stops
-        }
-    });
-
-    // Touch support
-    thumb.addEventListener('touchstart', (e) => {
-        isDragging = true;
-        e.preventDefault();
-    });
-
-    document.addEventListener('touchmove', (e) => {
-        if (!isDragging) return;
-        const touch = e.touches[0];
-        const rect = slider.getBoundingClientRect();
-        const min = parseInt(slider.dataset.min);
-        const max = parseInt(slider.dataset.max);
-        let newPos = (touch.clientX - rect.left) / rect.width;
-        newPos = Math.max(0, Math.min(1, newPos));
-        const newValue = Math.round(min + newPos * (max - min));
-        slider.dataset.value = newValue;
-        settings[slider.dataset.id] = newValue;
-        updateSliderPosition(slider);
-        updateControlIndicators();
-    });
-
-    document.addEventListener('touchend', () => {
-        if (isDragging) {
-            isDragging = false;
-            redrawImage();
-        }
-    });
-});
-
-// Update settings initialization to match custom sliders
-customSliders.forEach(slider => {
-    settings[slider.dataset.id] = parseInt(slider.dataset.value);
-});
 function updateControlIndicators() {
     const controlValues = [
         'brightness', 'contrast', 'grayscale', 'vibrance', 'highlights', 'shadows', 
@@ -930,47 +829,37 @@ window.addEventListener('click', (e) => {
 });
 
 canvas.addEventListener('click', () => {
-    const controlsContainer = document.querySelector('.controls');
-    const modalControls = document.getElementById('modal-controls');
-    const clonedControls = controlsContainer.cloneNode(true);
-    modalControls.innerHTML = '';
-    modalControls.appendChild(clonedControls);
+    try {
+        const controlsContainer = document.querySelector('.controls');
+        const modalControls = document.getElementById('modal-controls');
 
-    modalImage.src = canvas.toDataURL('image/png');
+        if (!controlsContainer || !modalControls) {
+            console.error("Controls or modal-controls not found in DOM");
+            return;
+        }
 
-    const modalSliders = modalControls.querySelectorAll('.custom-slider');
-    modalSliders.forEach(slider => {
-        updateSliderPosition(slider);
-        const thumb = slider.querySelector('.slider-thumb');
-        let isDragging = false;
+        const clonedControls = controlsContainer.cloneNode(true);
+        modalControls.innerHTML = '';
+        modalControls.appendChild(clonedControls);
 
-        thumb.addEventListener('mousedown', (e) => {
-            isDragging = true;
-            e.preventDefault();
+        modalImage.src = canvas.toDataURL('image/png');
+
+        const modalInputs = modalControls.querySelectorAll('input[type="range"]');
+        modalInputs.forEach(input => {
+            input.addEventListener('input', debounce((e) => {
+                const id = e.target.id;
+                settings[id] = parseInt(e.target.value);
+                updateControlIndicators();
+                redrawImage();
+            }, 300));
         });
 
-        document.addEventListener('mousemove', (e) => {
-            if (!isDragging) return;
-            const rect = slider.getBoundingClientRect();
-            const min = parseInt(slider.dataset.min);
-            const max = parseInt(slider.dataset.max);
-            let newPos = (e.clientX - rect.left) / rect.width;
-            newPos = Math.max(0, Math.min(1, newPos));
-            const newValue = Math.round(min + newPos * (max - min));
-            slider.dataset.value = newValue;
-            settings[slider.dataset.id] = newValue;
-            updateSliderPosition(slider);
-            updateControlIndicators();
-            redrawImage();
-        });
-
-        document.addEventListener('mouseup', () => {
-            isDragging = false;
-        });
-    });
-
-    modal.style.display = 'block';
+        modal.style.display = 'block';
+    } catch (error) {
+        console.error("Error opening modal:", error);
+    }
 });
+
 closeBtn.addEventListener('click', () => {
     modal.style.display = 'none';
     document.getElementById('modal-controls').innerHTML = '';
@@ -1244,9 +1133,8 @@ undoButton.addEventListener('click', () => {
 
         ctx.putImageData(previousState.imageData, 0, 0);
         Object.assign(settings, previousState.filters);
-        customSliders.forEach(slider => {
-            slider.dataset.value = settings[slider.dataset.id];
-            updateSliderPosition(slider);
+        document.querySelectorAll('.controls input').forEach(input => {
+            input.value = settings[input.id];
         });
         updateControlIndicators();
         redrawImage();
@@ -1260,9 +1148,8 @@ redoButton.addEventListener('click', () => {
 
         ctx.putImageData(nextState.imageData, 0, 0);
         Object.assign(settings, nextState.filters);
-        customSliders.forEach(slider => {
-            slider.dataset.value = settings[slider.dataset.id];
-            updateSliderPosition(slider);
+        document.querySelectorAll('.controls input').forEach(input => {
+            input.value = settings[input.id];
         });
         updateControlIndicators();
         redrawImage();
@@ -1274,11 +1161,32 @@ restoreButton.addEventListener('click', () => {
     settings = { 
         brightness: 100, 
         contrast: 100, 
-        // ... reset all settings as in your original
+        grayscale: 0, 
+        vibrance: 100, 
+        highlights: 100, 
+        shadows: 100, 
+        noise: 0, 
+        exposure: 100, 
+        temperature: 100, 
+        saturation: 100,
+        'glitch-scanline': 0,
+        'glitch-chromatic': 0,
+        'glitch-rgb-split': 0,
+        'glitch-invert': 0,
+        'glitch-vhs': 0,
+        'glitch-chromatic-vertical': 0,
+        'glitch-chromatic-diagonal': 0,
+        'glitch-pixel-shuffle': 0,
+        'glitch-wave': 0,
+        'pixel-grain': 0,
+        'pixel-dither': 0,
+        'kaleidoscope-segments': 0,
+        'kaleidoscope-offset': 0,
+        'vortex-twist': 0,
+        'edge-detect': 0
     };
-    customSliders.forEach(slider => {
-        slider.dataset.value = settings[slider.dataset.id];
-        updateSliderPosition(slider);
+    document.querySelectorAll('.controls input').forEach(input => {
+        input.value = settings[input.id];
     });
     updateControlIndicators();
     saveImageState(true);
