@@ -287,8 +287,6 @@ button:hover {
     gap: 20px;
 }
 
-
-
 #crop-controls {
     display: flex;
     flex-direction: column;
@@ -408,7 +406,7 @@ button:hover {
 }
 
 #upload-new-photo {
-    display: block; /* Visible by default */
+    display: block;
     padding: 10px 20px;
     background-color: #4CAF50;
     color: white;
@@ -423,9 +421,11 @@ button:hover {
     border: none;
     cursor: pointer;
 }
+
 #toggle-original:hover {
     background-color: #1976D2;
 }
+
 #canvas {
     max-width: 1920px;
     max-height: 1080px;
@@ -433,24 +433,6 @@ button:hover {
     margin: 20px auto;
 }
 
-#upload-new-photo {
-    display: block; /* Visible by default */
-    padding: 10px 20px;
-    background-color: #4CAF50;
-    color: white;
-    border: none;
-    cursor: pointer;
-}
-
-#auto-enhance {
-    padding: 10px 20px;
-    background-color: #4CAF50;
-    color: white;
-    border: none;
-    cursor: pointer;
-}
-
-#auto-enhance:hover,
 #upload-new-photo:hover {
     background-color: #45a049;
 }
