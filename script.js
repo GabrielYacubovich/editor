@@ -41,7 +41,13 @@ let settings = {
     'glitch-chromatic-vertical': 0,
     'glitch-chromatic-diagonal': 0,
     'glitch-pixel-shuffle': 0,
-    'glitch-wave': 0
+    'glitch-wave': 0,
+    'pixel-grain': 0,
+    'pixel-dither': 0,
+    'kaleidoscope-segments': 0,
+    'kaleidoscope-offset': 0,
+    'vortex-twist': 0,
+    'edge-detect': 0
 };
 let history = [{ filters: { ...settings }, imageData: null }];
 let redoHistory = [];
@@ -86,11 +92,15 @@ function updateControlIndicators() {
         'noise', 'exposure', 'temperature', 'saturation',
         'glitch-scanline', 'glitch-chromatic', 'glitch-rgb-split', 'glitch-invert',
         'glitch-vhs', 'glitch-chromatic-vertical', 'glitch-chromatic-diagonal',
-        'glitch-pixel-shuffle', 'glitch-wave'
+        'glitch-pixel-shuffle', 'glitch-wave',
+        'pixel-grain', 'pixel-dither', 'kaleidoscope-segments', 'kaleidoscope-offset',
+        'vortex-twist', 'edge-detect'
     ];
     controlValues.forEach(id => {
         const indicator = document.getElementById(`${id}-value`);
-        if (indicator) indicator.textContent = `${settings[id]}%`;
+        if (indicator) {
+            indicator.textContent = id === 'kaleidoscope-segments' ? `${settings[id]}` : `${settings[id]}%`;
+        }
     });
 }
 
@@ -136,10 +146,11 @@ function redrawImage() {
                          sepia(${(settings.temperature - 100) / 100}%)`;
     fullResCtx.drawImage(img, 0, 0, originalWidth, originalHeight);
 
-    // Apply advanced filters and glitches at full resolution
+    // Apply advanced filters, glitches, and complex filters at full resolution
     const scaleFactor = 1; // Full resolution
     return applyAdvancedFilters(fullResCtx, fullResCanvas, noiseSeed, scaleFactor)
         .then(() => applyGlitchEffects(fullResCtx, fullResCanvas, noiseSeed, scaleFactor))
+        .then(() => applyComplexFilters(fullResCtx, fullResCanvas, noiseSeed, scaleFactor))
         .then(() => {
             // Update preview canvas
             ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -384,6 +395,144 @@ function applyGlitchEffects(ctx, canvas, seed = noiseSeed, scaleFactor = 1) {
                     data[idx + 1] = tempData[srcIdx + 1];
                     data[idx + 2] = tempData[srcIdx + 2];
                     data[idx + 3] = tempData[srcIdx + 3];
+                }
+            }
+        }
+
+        ctx.putImageData(imageData, 0, 0);
+        resolve();
+    });
+}
+
+function applyComplexFilters(ctx, canvas, seed = noiseSeed, scaleFactor = 1) {
+    return new Promise((resolve) => {
+        let randomSeed = seed;
+        let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        let data = imageData.data;
+        const width = canvas.width;
+        const height = canvas.height;
+
+        // Pixel Grain
+        if (settings['pixel-grain'] > 0) {
+            const intensity = settings['pixel-grain'] / 100;
+            for (let i = 0; i < data.length; i += 4) {
+                randomSeed += 1;
+                const grain = (seededRandom(randomSeed) - 0.5) * 50 * intensity * scaleFactor;
+                data[i] = Math.max(0, Math.min(255, data[i] + grain));
+                data[i + 1] = Math.max(0, Math.min(255, data[i + 1] + grain));
+                data[i + 2] = Math.max(0, Math.min(255, data[i + 2] + grain));
+            }
+        }
+
+        // Pixel Dither (Floyd-Steinberg)
+        if (settings['pixel-dither'] > 0) {
+            const intensity = settings['pixel-dither'] / 100;
+            const tempData = new Uint8ClampedArray(data.length);
+            for (let i = 0; i < data.length; i++) tempData[i] = data[i];
+
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const idx = (y * width + x) * 4;
+                    for (let c = 0; c < 3; c++) {
+                        const oldPixel = tempData[idx + c];
+                        const newPixel = Math.round(oldPixel / 255 * 4 * intensity) * (255 / (4 * intensity));
+                        tempData[idx + c] = newPixel;
+                        const quantError = oldPixel - newPixel;
+
+                        if (x + 1 < width) tempData[idx + 4 + c] += quantError * 7 / 16;
+                        if (y + 1 < height) {
+                            if (x - 1 >= 0) tempData[idx + (width - 1) * 4 + c] += quantError * 3 / 16;
+                            tempData[idx + width * 4 + c] += quantError * 5 / 16;
+                            if (x + 1 < width) tempData[idx + (width + 1) * 4 + c] += quantError * 1 / 16;
+                        }
+                    }
+                }
+            }
+            for (let i = 0; i < data.length; i++) data[i] = tempData[i];
+        }
+
+        // Kaleidoscope
+        if (settings['kaleidoscope-segments'] > 0) {
+            const segments = Math.max(1, settings['kaleidoscope-segments']);
+            const offset = (settings['kaleidoscope-offset'] / 100) * Math.min(width, height) / 2;
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = width;
+            tempCanvas.height = height;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.putImageData(imageData, 0, 0);
+
+            ctx.clearRect(0, 0, width, height);
+            const centerX = width / 2 + offset;
+            const centerY = height / 2 + offset;
+            const angleStep = (2 * Math.PI) / segments;
+
+            for (let i = 0; i < segments; i++) {
+                ctx.save();
+                ctx.translate(centerX, centerY);
+                ctx.rotate(angleStep * i);
+                if (i % 2 === 0) {
+                    ctx.scale(1, 1);
+                } else {
+                    ctx.scale(-1, 1);
+                }
+                ctx.drawImage(tempCanvas, -centerX, -centerY);
+                ctx.restore();
+            }
+            imageData = ctx.getImageData(0, 0, width, height);
+            data = imageData.data;
+        }
+
+        // Vortex Twist
+        if (settings['vortex-twist'] > 0) {
+            const intensity = settings['vortex-twist'] / 100;
+            const tempData = new Uint8ClampedArray(data.length);
+            for (let i = 0; i < data.length; i++) tempData[i] = data[i];
+            const centerX = width / 2;
+            const centerY = height / 2;
+            const maxRadius = Math.sqrt(centerX * centerX + centerY * centerY);
+
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const idx = (y * width + x) * 4;
+                    const dx = x - centerX;
+                    const dy = y - centerY;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    const angle = Math.atan2(dy, dx) + (distance / maxRadius) * intensity * Math.PI;
+                    const newX = Math.round(centerX + distance * Math.cos(angle));
+                    const newY = Math.round(centerY + distance * Math.sin(angle));
+                    const srcIdx = (Math.min(height - 1, Math.max(0, newY)) * width + Math.min(width - 1, Math.max(0, newX))) * 4;
+                    data[idx] = tempData[srcIdx];
+                    data[idx + 1] = tempData[srcIdx + 1];
+                    data[idx + 2] = tempData[srcIdx + 2];
+                    data[idx + 3] = tempData[srcIdx + 3];
+                }
+            }
+        }
+
+        // Edge Detection (Sobel)
+        if (settings['edge-detect'] > 0) {
+            const intensity = settings['edge-detect'] / 100;
+            const tempData = new Uint8ClampedArray(data.length);
+            for (let i = 0; i < data.length; i++) tempData[i] = data[i];
+
+            const sobelX = [[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]];
+            const sobelY = [[-1, -2, -1], [0, 0, 0], [1, 2, 1]];
+
+            for (let y = 1; y < height - 1; y++) {
+                for (let x = 1; x < width - 1; x++) {
+                    const idx = (y * width + x) * 4;
+                    let gx = 0, gy = 0;
+                    for (let dy = -1; dy <= 1; dy++) {
+                        for (let dx = -1; dx <= 1; dx++) {
+                            const pixelIdx = ((y + dy) * width + (x + dx)) * 4;
+                            const gray = (tempData[pixelIdx] + tempData[pixelIdx + 1] + tempData[pixelIdx + 2]) / 3;
+                            gx += gray * sobelX[dy + 1][dx + 1];
+                            gy += gray * sobelY[dy + 1][dx + 1];
+                        }
+                    }
+                    const edge = Math.sqrt(gx * gx + gy * gy) * intensity;
+                    const value = Math.min(255, Math.max(0, edge));
+                    data[idx] = data[idx + 1] = data[idx + 2] = value;
                 }
             }
         }
@@ -655,7 +804,7 @@ function resizeCrop(x, y) {
         cropRect.width = newWidth;
         cropRect.height = newHeight;
     } else if (isDragging === 'bottom-right') {
-        newWidth = clamp(x - cropRect.x, 10, cropCanvas.width - cropRect.x);
+        newWidth = clamp(x - cropRect.x, 10, cropCanvas.width - cropCanvas.width - cropRect.x);
         newHeight = lockAspectRatio ? newWidth / aspectRatio : clamp(y - cropRect.y, 10, cropCanvas.height - cropRect.y);
         cropRect.width = newWidth;
         cropRect.height = newHeight;
@@ -731,9 +880,10 @@ img.onload = function () {
     fullResCanvas.width = originalWidth;
     fullResCanvas.height = originalHeight;
 
-    // Calculate preview dimensions
+    // Calculate preview dimensions with a minimum size
     const maxDisplayWidth = Math.min(1920, window.innerWidth - 100);
     const maxDisplayHeight = Math.min(1080, window.innerHeight - 250);
+    const minPreviewDimension = 800; // Minimum width or height to reduce pixelation
     const ratio = originalWidth / originalHeight;
 
     if (ratio > 1) {
@@ -743,11 +893,19 @@ img.onload = function () {
             previewHeight = maxDisplayHeight;
             previewWidth = previewHeight * ratio;
         }
+        if (previewHeight < minPreviewDimension) {
+            previewHeight = minPreviewDimension;
+            previewWidth = previewHeight * ratio;
+        }
     } else {
         previewHeight = Math.min(originalHeight, maxDisplayHeight);
         previewWidth = previewHeight * ratio;
         if (previewWidth > maxDisplayWidth) {
             previewWidth = maxDisplayWidth;
+            previewHeight = previewWidth / ratio;
+        }
+        if (previewWidth < minPreviewDimension) {
+            previewWidth = minPreviewDimension;
             previewHeight = previewWidth / ratio;
         }
     }
@@ -1028,7 +1186,13 @@ restoreButton.addEventListener('click', () => {
         'glitch-chromatic-vertical': 0,
         'glitch-chromatic-diagonal': 0,
         'glitch-pixel-shuffle': 0,
-        'glitch-wave': 0
+        'glitch-wave': 0,
+        'pixel-grain': 0,
+        'pixel-dither': 0,
+        'kaleidoscope-segments': 0,
+        'kaleidoscope-offset': 0,
+        'vortex-twist': 0,
+        'edge-detect': 0
     };
     document.querySelectorAll('.controls input').forEach(input => {
         input.value = settings[input.id];
@@ -1043,7 +1207,7 @@ controls.forEach(control => {
         const id = e.target.id;
         settings[id] = parseInt(e.target.value);
         updateControlIndicators();
-        if (id.startsWith('glitch-')) {
+        if (id.startsWith('glitch-') || id.startsWith('pixel-') || id.startsWith('kaleidoscope-') || id === 'vortex-twist' || id === 'edge-detect') {
             lastAppliedEffect = id;
         }
     });
