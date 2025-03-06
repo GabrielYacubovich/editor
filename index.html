@@ -19,137 +19,210 @@
                 <div style="padding-top: 0px;"></div>
                 <div class="controls">
                     <!-- Basic Filters -->
-                    <div>
+                    <div class="control-group">
                         <label for="brightness">Brightness:</label>
-                        <input type="range" id="brightness" min="0" max="200" value="100">
-                        <span id="brightness-value">100%</span>
+                        <div class="custom-slider" data-id="brightness" data-min="0" data-max="200" data-value="100">
+                            <div class="slider-track"></div>
+                            <div class="slider-thumb"></div>
+                        </div>
+                        <span id="brightness-value" class="value-indicator">100%</span>
                     </div>
-                    <div>
+                    <div class="control-group">
                         <label for="contrast">Contrast:</label>
-                        <input type="range" id="contrast" min="0" max="200" value="100">
-                        <span id="contrast-value">100%</span>
+                        <div class="custom-slider" data-id="contrast" data-min="0" data-max="200" data-value="100">
+                            <div class="slider-track"></div>
+                            <div class="slider-thumb"></div>
+                        </div>
+                        <span id="contrast-value" class="value-indicator">100%</span>
                     </div>
-                    <div>
+                    <div class="control-group">
                         <label for="grayscale">Grayscale:</label>
-                        <input type="range" id="grayscale" min="0" max="100" value="0">
-                        <span id="grayscale-value">0%</span>
+                        <div class="custom-slider" data-id="grayscale" data-min="0" data-max="100" data-value="0">
+                            <div class="slider-track"></div>
+                            <div class="slider-thumb"></div>
+                        </div>
+                        <span id="grayscale-value" class="value-indicator">0%</span>
                     </div>
-                    <div>
+                    <div class="control-group">
                         <label for="vibrance">Vibrance:</label>
-                        <input type="range" id="vibrance" min="0" max="200" value="100">
-                        <span id="vibrance-value">100%</span>
+                        <div class="custom-slider" data-id="vibrance" data-min="0" data-max="200" data-value="100">
+                            <div class="slider-track"></div>
+                            <div class="slider-thumb"></div>
+                        </div>
+                        <span id="vibrance-value" class="value-indicator">100%</span>
                     </div>
-                    <div>
+                    <div class="control-group">
                         <label for="highlights">Highlights:</label>
-                        <input type="range" id="highlights" min="0" max="200" value="100">
-                        <span id="highlights-value">100%</span>
+                        <div class="custom-slider" data-id="highlights" data-min="0" data-max="200" data-value="100">
+                            <div class="slider-track"></div>
+                            <div class="slider-thumb"></div>
+                        </div>
+                        <span id="highlights-value" class="value-indicator">100%</span>
                     </div>
-                    <div>
+                    <div class="control-group">
                         <label for="shadows">Shadows:</label>
-                        <input type="range" id="shadows" min="0" max="200" value="100">
-                        <span id="shadows-value">100%</span>
+                        <div class="custom-slider" data-id="shadows" data-min="0" data-max="200" data-value="100">
+                            <div class="slider-track"></div>
+                            <div class="slider-thumb"></div>
+                        </div>
+                        <span id="shadows-value" class="value-indicator">100%</span>
                     </div>
-                    <div>
+                    <div class="control-group">
                         <label for="noise">Noise:</label>
-                        <input type="range" id="noise" min="0" max="100" value="0">
-                        <span id="noise-value">0%</span>
+                        <div class="custom-slider" data-id="noise" data-min="0" data-max="100" data-value="0">
+                            <div class="slider-track"></div>
+                            <div class="slider-thumb"></div>
+                        </div>
+                        <span id="noise-value" class="value-indicator">0%</span>
                     </div>
-                    <div>
+                    <div class="control-group">
                         <label for="exposure">Exposure:</label>
-                        <input type="range" id="exposure" min="0" max="200" value="100">
-                        <span id="exposure-value">100%</span>
+                        <div class="custom-slider" data-id="exposure" data-min="0" data-max="200" data-value="100">
+                            <div class="slider-track"></div>
+                            <div class="slider-thumb"></div>
+                        </div>
+                        <span id="exposure-value" class="value-indicator">100%</span>
                     </div>
-                    <div>
+                    <div class="control-group">
                         <label for="temperature">Temperature:</label>
-                        <input type="range" id="temperature" min="0" max="200" value="100">
-                        <span id="temperature-value">100%</span>
+                        <div class="custom-slider" data-id="temperature" data-min="0" data-max="200" data-value="100">
+                            <div class="slider-track"></div>
+                            <div class="slider-thumb"></div>
+                        </div>
+                        <span id="temperature-value" class="value-indicator">100%</span>
                     </div>
-                    <div>
+                    <div class="control-group">
                         <label for="saturation">Saturation:</label>
-                        <input type="range" id="saturation" min="0" max="200" value="100">
-                        <span id="saturation-value">100%</span>
+                        <div class="custom-slider" data-id="saturation" data-min="0" data-max="200" data-value="100">
+                            <div class="slider-track"></div>
+                            <div class="slider-thumb"></div>
+                        </div>
+                        <span id="saturation-value" class="value-indicator">100%</span>
                     </div>
-
-                    <!-- Glitch Effects -->
-                   
 
                     <!-- Complex Filters -->
                     <div>
                         <h3>Complex Filters</h3>
                     </div>
-                    <div>
+                    <div class="control-group">
                         <label for="glitch-scanline">Scanline:</label>
-                        <input type="range" id="glitch-scanline" min="0" max="100" value="0">
-                        <span id="glitch-scanline-value">0%</span>
+                        <div class="custom-slider" data-id="glitch-scanline" data-min="0" data-max="100" data-value="0">
+                            <div class="slider-track"></div>
+                            <div class="slider-thumb"></div>
+                        </div>
+                        <span id="glitch-scanline-value" class="value-indicator">0%</span>
                     </div>
-                    <div>
+                    <div class="control-group">
                         <label for="glitch-chromatic">Chromatic (H):</label>
-                        <input type="range" id="glitch-chromatic" min="0" max="100" value="0">
-                        <span id="glitch-chromatic-value">0%</span>
+                        <div class="custom-slider" data-id="glitch-chromatic" data-min="0" data-max="100" data-value="0">
+                            <div class="slider-track"></div>
+                            <div class="slider-thumb"></div>
+                        </div>
+                        <span id="glitch-chromatic-value" class="value-indicator">0%</span>
                     </div>
-                    <div>
+                    <div class="control-group">
                         <label for="glitch-rgb-split">RGB Split:</label>
-                        <input type="range" id="glitch-rgb-split" min="0" max="100" value="0">
-                        <span id="glitch-rgb-split-value">0%</span>
+                        <div class="custom-slider" data-id="glitch-rgb-split" data-min="0" data-max="100" data-value="0">
+                            <div class="slider-track"></div>
+                            <div class="slider-thumb"></div>
+                        </div>
+                        <span id="glitch-rgb-split-value" class="value-indicator">0%</span>
                     </div>
-                    <div>
+                    <div class="control-group">
                         <label for="glitch-invert">Invert:</label>
-                        <input type="range" id="glitch-invert" min="0" max="100" value="0">
-                        <span id="glitch-invert-value">0%</span>
+                        <div class="custom-slider" data-id="glitch-invert" data-min="0" data-max="100" data-value="0">
+                            <div class="slider-track"></div>
+                            <div class="slider-thumb"></div>
+                        </div>
+                        <span id="glitch-invert-value" class="value-indicator">0%</span>
                     </div>
-                    <div>
+                    <div class="control-group">
                         <label for="glitch-vhs">VHS:</label>
-                        <input type="range" id="glitch-vhs" min="0" max="100" value="0">
-                        <span id="glitch-vhs-value">0%</span>
+                        <div class="custom-slider" data-id="glitch-vhs" data-min="0" data-max="100" data-value="0">
+                            <div class="slider-track"></div>
+                            <div class="slider-thumb"></div>
+                        </div>
+                        <span id="glitch-vhs-value" class="value-indicator">0%</span>
                     </div>
-                    <div>
+                    <div class="control-group">
                         <label for="glitch-chromatic-vertical">Chromatic (V):</label>
-                        <input type="range" id="glitch-chromatic-vertical" min="0" max="100" value="0">
-                        <span id="glitch-chromatic-vertical-value">0%</span>
+                        <div class="custom-slider" data-id="glitch-chromatic-vertical" data-min="0" data-max="100" data-value="0">
+                            <div class="slider-track"></div>
+                            <div class="slider-thumb"></div>
+                        </div>
+                        <span id="glitch-chromatic-vertical-value" class="value-indicator">0%</span>
                     </div>
-                    <div>
+                    <div class="control-group">
                         <label for="glitch-chromatic-diagonal">Chromatic (D):</label>
-                        <input type="range" id="glitch-chromatic-diagonal" min="0" max="100" value="0">
-                        <span id="glitch-chromatic-diagonal-value">0%</span>
+                        <div class="custom-slider" data-id="glitch-chromatic-diagonal" data-min="0" data-max="100" data-value="0">
+                            <div class="slider-track"></div>
+                            <div class="slider-thumb"></div>
+                        </div>
+                        <span id="glitch-chromatic-diagonal-value" class="value-indicator">0%</span>
                     </div>
-                    <div>
+                    <div class="control-group">
                         <label for="glitch-pixel-shuffle">Pixel Shuffle:</label>
-                        <input type="range" id="glitch-pixel-shuffle" min="0" max="100" value="0">
-                        <span id="glitch-pixel-shuffle-value">0%</span>
+                        <div class="custom-slider" data-id="glitch-pixel-shuffle" data-min="0" data-max="100" data-value="0">
+                            <div class="slider-track"></div>
+                            <div class="slider-thumb"></div>
+                        </div>
+                        <span id="glitch-pixel-shuffle-value" class="value-indicator">0%</span>
                     </div>
-                    <div>
+                    <div class="control-group">
                         <label for="glitch-wave">Wave Distortion:</label>
-                        <input type="range" id="glitch-wave" min="0" max="100" value="0">
-                        <span id="glitch-wave-value">0%</span>
-                    </div><div>
+                        <div class="custom-slider" data-id="glitch-wave" data-min="0" data-max="100" data-value="0">
+                            <div class="slider-track"></div>
+                            <div class="slider-thumb"></div>
+                        </div>
+                        <span id="glitch-wave-value" class="value-indicator">0%</span>
+                    </div>
+                    <div class="control-group">
                         <label for="pixel-grain">Pixel Grain:</label>
-                        <input type="range" id="pixel-grain" min="0" max="100" value="0">
-                        <span id="pixel-grain-value">0%</span>
+                        <div class="custom-slider" data-id="pixel-grain" data-min="0" data-max="100" data-value="0">
+                            <div class="slider-track"></div>
+                            <div class="slider-thumb"></div>
+                        </div>
+                        <span id="pixel-grain-value" class="value-indicator">0%</span>
                     </div>
-                    <div>
+                    <div class="control-group">
                         <label for="pixel-dither">Pixel Dither:</label>
-                        <input type="range" id="pixel-dither" min="0" max="100" value="0">
-                        <span id="pixel-dither-value">0%</span>
+                        <div class="custom-slider" data-id="pixel-dither" data-min="0" data-max="100" data-value="0">
+                            <div class="slider-track"></div>
+                            <div class="slider-thumb"></div>
+                        </div>
+                        <span id="pixel-dither-value" class="value-indicator">0%</span>
                     </div>
-                    <div>
+                    <div class="control-group">
                         <label for="kaleidoscope-segments">Kaleidoscope:</label>
-                        <input type="range" id="kaleidoscope-segments" min="0" max="12" value="0">
-                        <span id="kaleidoscope-segments-value">0</span>
+                        <div class="custom-slider" data-id="kaleidoscope-segments" data-min="0" data-max="12" data-value="0">
+                            <div class="slider-track"></div>
+                            <div class="slider-thumb"></div>
+                        </div>
+                        <span id="kaleidoscope-segments-value" class="value-indicator">0</span>
                     </div>
-                    <div>
+                    <div class="control-group">
                         <label for="kaleidoscope-offset">Kaleido Offset:</label>
-                        <input type="range" id="kaleidoscope-offset" min="0" max="100" value="0">
-                        <span id="kaleidoscope-offset-value">0%</span>
+                        <div class="custom-slider" data-id="kaleidoscope-offset" data-min="0" data-max="100" data-value="0">
+                            <div class="slider-track"></div>
+                            <div class="slider-thumb"></div>
+                        </div>
+                        <span id="kaleidoscope-offset-value" class="value-indicator">0%</span>
                     </div>
-                    <div>
+                    <div class="control-group">
                         <label for="vortex-twist">Vortex Twist:</label>
-                        <input type="range" id="vortex-twist" min="0" max="100" value="0">
-                        <span id="vortex-twist-value">0%</span>
+                        <div class="custom-slider" data-id="vortex-twist" data-min="0" data-max="100" data-value="0">
+                            <div class="slider-track"></div>
+                            <div class="slider-thumb"></div>
+                        </div>
+                        <span id="vortex-twist-value" class="value-indicator">0%</span>
                     </div>
-                    <div>
+                    <div class="control-group">
                         <label for="edge-detect">Edge Detect:</label>
-                        <input type="range" id="edge-detect" min="0" max="100" value="0">
-                        <span id="edge-detect-value">0%</span>
+                        <div class="custom-slider" data-id="edge-detect" data-min="0" data-max="100" data-value="0">
+                            <div class="slider-track"></div>
+                            <div class="slider-thumb"></div>
+                        </div>
+                        <span id="edge-detect-value" class="value-indicator">0%</span>
                     </div>
                 </div>
 
@@ -170,7 +243,9 @@
             <span class="close-btn">×</span>
             <div class="modal-inner">
                 <img id="modal-image" src="" alt="Imagen ampliada">
-                <div id="modal-controls" class="controls"></div>
+                <div id="modal-controls" class="controls">
+                    <!-- Controls will be dynamically cloned from main controls -->
+                </div>
             </div>
         </div>
     </div>
@@ -181,11 +256,30 @@
             <span class="crop-close-btn">×</span>
             <div class="crop-modal-inner">
                 <canvas id="crop-canvas"></canvas>
-                <div id="crop-controls"></div>
+                <div id="crop-controls">
+                    <div class="crop-control-group">
+                        <label for="rotation">Rotación:</label>
+                        <div class="custom-slider" data-id="rotation" data-min="-180" data-max="180" data-value="0">
+                            <div class="slider-track"></div>
+                            <div class="slider-thumb"></div>
+                        </div>
+                        <span id="rotation-value" class="value-indicator">0°</span>
+                    </div>
+                    <div class="crop-button-group">
+                        <button id="crop-select-all">Seleccionar todo</button>
+                        <button id="crop-confirm">Confirmar</button>
+                        <button id="crop-skip">Omitir</button>
+                    </div>
+                    <div class="crop-lock-group">
+                        <input type="checkbox" id="lock-aspect">
+                        <label for="lock-aspect">Bloquear proporción</label>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
     <script src="script.js"></script>
+    <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'91c296691ec8da2f',t:'MTc0MTI3MTgwOS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
 </body>
 </html>
