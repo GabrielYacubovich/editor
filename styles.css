@@ -97,14 +97,6 @@ canvas {
     transform: none;
 }
 
-/* Complex Filters Header */
-.controls h3 {
-    margin: 20px 0 10px;
-    font-size: 16px;
-    font-weight: bold;
-    color: #333;
-}
-
 /* Action buttons */
 .action-buttons {
     margin-top: 20px;
@@ -116,7 +108,7 @@ canvas {
 button {
     margin-top: 0;
     padding: 10px 20px;
-    background-color: #4CAF50;
+    background-color: #000;
     color: white;
     border: none;
     cursor: pointer;
@@ -127,13 +119,13 @@ button {
 }
 
 button:hover {
-    background-color: #45a049;
+    background-color: #3a3a3a;
 }
 
 /* Specific glitch button styling */
 #glitch-scanline, #glitch-chromatic, #glitch-pixel,
 #glitch-databend, #glitch-wave, #glitch-bleed {
-    background-color: #ff4081;
+    background-color: #ff4081; /* Distinct pinkish color for glitch effects */
 }
 
 #glitch-scanline:hover, #glitch-chromatic:hover, #glitch-pixel:hover,
@@ -340,7 +332,7 @@ button:hover {
 .crop-button-group button {
     flex: 1;
     padding: 10px;
-    background-color: #4CAF50;
+    background-color: #000;
     color: white;
     border: none;
     cursor: pointer;
@@ -348,15 +340,15 @@ button:hover {
 }
 
 .crop-button-group button:hover {
-    background-color: #45a049;
+    background-color: #3a3a3a;
 }
 
 .crop-button-group #crop-skip {
-    background-color: #ff9800;
+    background-color: #000;
 }
 
 .crop-button-group #crop-skip:hover {
-    background-color: #e68900;
+    background-color: #3a3a3a;
 }
 
 .crop-lock-group {
@@ -416,7 +408,7 @@ button:hover {
 #upload-new-photo {
     display: block;
     padding: 10px 20px;
-    background-color: #4CAF50;
+    background-color: #000;
     color: white;
     border: none;
     cursor: pointer;
@@ -424,14 +416,14 @@ button:hover {
 
 #toggle-original {
     padding: 10px 20px;
-    background-color: #2196F3;
+    background-color: #000;
     color: white;
     border: none;
     cursor: pointer;
 }
 
 #toggle-original:hover {
-    background-color: #1976D2;
+    background-color: #3a3a3a;
 }
 
 #canvas {
@@ -442,7 +434,7 @@ button:hover {
 }
 
 #upload-new-photo:hover {
-    background-color: #45a049;
+    background-color: #3a3a3a;
 }
 
 #loading-indicator {
@@ -455,4 +447,88 @@ button:hover {
     padding: 10px 20px;
     border-radius: 5px;
     z-index: 1003;
+}
+
+
+
+
+/* Add to styles.css */
+.custom-slider {
+    position: relative;
+    width: 100%;
+    max-width: 150px; /* Match your original max-width */
+    height: 10px; /* Height of the track */
+    margin: 0 10px; /* Match your original spacing */
+    cursor: pointer;
+}
+
+.slider-track {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 4px; /* Track thickness */
+    background: linear-gradient(to right, #e7e7e7, #000000); /* Black for now */    border-radius: 2px;
+    transform: translateY(-50%);
+}
+
+.slider-thumb {
+    position: absolute;
+    width: 16px; /* Thumb size */
+    height: 16px;
+    background: #000000; /* Black thumb */
+    border-radius: 50%;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: grab;
+    transition: left 0.1s ease; /* Smooth movement */
+}
+
+.slider-thumb:active {
+    cursor: grabbing;
+}
+
+/* Ensure control-group layout matches your original */
+.control-group {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    width: 100%;
+}
+
+.control-group label {
+    flex: 0 0 100px;
+    margin-right: 10px;
+    font-size: 14px;
+}
+
+.control-group .value-indicator {
+    flex: 0 0 40px;
+    font-size: 14px;
+    font-weight: bold;
+    text-align: right;
+}
+
+/* Responsive adjustments (unchanged from your original) */
+@media (max-width: 768px) {
+    .control-group {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .control-group label {
+        flex: none;
+        margin-bottom: 5px;
+    }
+
+    .custom-slider {
+        max-width: 100%;
+        margin: 0;
+    }
+
+    .control-group .value-indicator {
+        flex: none;
+        margin-top: 5px;
+    }
 }
