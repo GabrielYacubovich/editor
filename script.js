@@ -1,6 +1,6 @@
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
-const customSliders = document.querySelectorAll('.custom-slider');
+const controls = document.querySelectorAll('.controls input');
 const undoButton = document.getElementById('undo');
 const redoButton = document.getElementById('redo');
 const restoreButton = document.getElementById('restore');
@@ -36,10 +36,12 @@ let settings = {
     'glitch-scanline': 0,
     'glitch-chromatic': 0,
     'glitch-rgb-split': 0,
+    'glitch-invert': 0,
     'glitch-vhs': 0,
     'glitch-chromatic-vertical': 0,
     'glitch-chromatic-diagonal': 0,
-    'glitch-pixel-shuffle': 0
+    'glitch-pixel-shuffle': 0,
+    'glitch-wave': 0
 };
 let history = [{ filters: { ...settings }, imageData: null }];
 let redoHistory = [];
@@ -53,25 +55,12 @@ let startX, startY;
 let lockAspectRatio = false;
 let aspectRatio = 1;
 let rotation = 0;
-let isSliderDragging = false;
-let activeSlider = null;
 
 function debounce(func, wait) {
     let timeout;
     return function (...args) {
         clearTimeout(timeout);
         timeout = setTimeout(() => func.apply(this, args), wait);
-    };
-}
-
-function throttle(func, limit) {
-    let inThrottle;
-    return function (...args) {
-        if (!inThrottle) {
-            func.apply(this, args);
-            inThrottle = true;
-            setTimeout(() => inThrottle = false, limit);
-        }
     };
 }
 
@@ -95,8 +84,9 @@ function updateControlIndicators() {
     const controlValues = [
         'brightness', 'contrast', 'grayscale', 'vibrance', 'highlights', 'shadows', 
         'noise', 'exposure', 'temperature', 'saturation',
-        'glitch-scanline', 'glitch-chromatic', 'glitch-rgb-split', 'glitch-vhs',
-        'glitch-chromatic-vertical', 'glitch-chromatic-diagonal', 'glitch-pixel-shuffle'
+        'glitch-scanline', 'glitch-chromatic', 'glitch-rgb-split', 'glitch-invert',
+        'glitch-vhs', 'glitch-chromatic-vertical', 'glitch-chromatic-diagonal',
+        'glitch-pixel-shuffle', 'glitch-wave'
     ];
     controlValues.forEach(id => {
         const indicator = document.getElementById(`${id}-value`);
@@ -130,51 +120,36 @@ function showLoadingIndicator(show = true) {
     }
 }
 
-let isRedrawing = false;
-
 function redrawImage() {
-    if (isRedrawing) return Promise.resolve(); // Prevent concurrent redraws
-    isRedrawing = true;
-    showLoadingIndicator(true);
-
-    return new Promise((resolve) => {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        if (isShowingOriginal && originalImageData) {
-            ctx.putImageData(originalImageData, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (isShowingOriginal && originalImageData) {
+        ctx.putImageData(originalImageData, 0, 0);
+    } else {
+        ctx.filter = `brightness(${settings.brightness * (settings.exposure / 100)}%)
+                      contrast(${settings.contrast}%)
+                      grayscale(${settings.grayscale}%)
+                      saturate(${settings.saturation}%)
+                      sepia(${(settings.temperature - 100) / 100}%)`;
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const scaleFactor = Math.min(previewWidth / originalWidth, previewHeight / originalHeight);
+        showLoadingIndicator(true);
+        return applyAdvancedFilters(ctx, canvas, noiseSeed, scaleFactor).then(() => {
+            return applyGlitchEffects(ctx, canvas, noiseSeed, scaleFactor).then(() => {
+                if (modal.style.display === 'block') {
+                    modalImage.src = canvas.toDataURL('image/png');
+                }
+                saveImageState();
+                showLoadingIndicator(false);
+            });
+        }).catch(error => {
+            console.error('Error in redraw:', error);
             showLoadingIndicator(false);
-            isRedrawing = false;
-            resolve();
-        } else {
-            ctx.filter = `brightness(${settings.brightness * (settings.exposure / 100)}%)
-                          contrast(${settings.contrast}%)
-                          grayscale(${settings.grayscale}%)
-                          saturate(${settings.saturation}%)
-                          sepia(${(settings.temperature - 100) / 100}%)`;
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-            const scaleFactor = Math.min(previewWidth / originalWidth, previewHeight / originalHeight);
-            applyAdvancedFilters(ctx, canvas, noiseSeed, scaleFactor)
-                .then(() => applyGlitchEffects(ctx, canvas, noiseSeed, scaleFactor))
-                .then(() => {
-                    if (modal.style.display === 'block') {
-                        modalImage.src = canvas.toDataURL('image/png');
-                    }
-                    saveImageState();
-                    showLoadingIndicator(false);
-                    isRedrawing = false;
-                    resolve();
-                })
-                .catch(error => {
-                    console.error('Error in redraw:', error);
-                    showLoadingIndicator(false);
-                    isRedrawing = false;
-                    resolve();
-                });
-        }
-    });
+        });
+    }
+    return Promise.resolve().then(() => showLoadingIndicator(false));
 }
 
 function redrawFullResImage() {
-    // Ensure this doesn’t interfere with the preview canvas
     fullResCanvas.width = originalWidth;
     fullResCanvas.height = originalHeight;
     fullResCtx.clearRect(0, 0, fullResCanvas.width, fullResCanvas.height);
@@ -185,8 +160,9 @@ function redrawFullResImage() {
                          sepia(${(settings.temperature - 100) / 100}%)`;
     fullResCtx.drawImage(img, 0, 0, fullResCanvas.width, fullResCanvas.height);
     const scaleFactor = Math.min(previewWidth / originalWidth, previewHeight / originalHeight);
-    return applyAdvancedFilters(fullResCtx, fullResCanvas, noiseSeed, scaleFactor)
-        .then(() => applyGlitchEffects(fullResCtx, fullResCanvas, noiseSeed, scaleFactor));
+    return applyAdvancedFilters(fullResCtx, fullResCanvas, noiseSeed, scaleFactor).then(() => {
+        return applyGlitchEffects(fullResCtx, fullResCanvas, noiseSeed, scaleFactor);
+    });
 }
 
 function seededRandom(seed) {
@@ -271,6 +247,21 @@ function applyGlitchEffects(ctx, canvas, seed = noiseSeed, scaleFactor = 1) {
             }
         }
 
+        if (settings['glitch-invert'] > 0) {
+            const intensity = settings['glitch-invert'] / 100;
+            for (let y = 0; y < height; y++) {
+                randomSeed += 1;
+                if (seededRandom(randomSeed) < 0.15 * intensity) {
+                    for (let x = 0; x < width; x++) {
+                        const idx = (y * width + x) * 4;
+                        data[idx] = 255 - data[idx];
+                        data[idx + 1] = 255 - data[idx + 1];
+                        data[idx + 2] = 255 - data[idx + 2];
+                    }
+                }
+            }
+        }
+
         if (settings['glitch-vhs'] > 0) {
             const intensity = settings['glitch-vhs'] / 100;
             for (let y = 0; y < height; y++) {
@@ -290,6 +281,18 @@ function applyGlitchEffects(ctx, canvas, seed = noiseSeed, scaleFactor = 1) {
             ctx.fillStyle = 'rgba(0, 0, 255, 0.3)';
             ctx.fillRect(0, 2 * height / 3, width, height / 3);
             ctx.globalAlpha = 1.0;
+            for (let i = 0; i < data.length; i += 4) {
+                randomSeed += 1;
+                if (seededRandom(randomSeed) < 0.1 * intensity) {
+                    randomSeed += 1;
+                    const noise = seededRandom(randomSeed) * 100 * intensity * resolutionScale;
+                    if (!(data[i] === 255 && data[i + 1] === 255 && data[i + 2] === 255 && data[i + 3] === 255)) {
+                        data[i] += noise;
+                        data[i + 1] += noise;
+                        data[i + 2] += noise;
+                    }
+                }
+            }
         }
 
         if (settings['glitch-chromatic-vertical'] > 0) {
@@ -361,6 +364,26 @@ function applyGlitchEffects(ctx, canvas, seed = noiseSeed, scaleFactor = 1) {
                             }
                         }
                     }
+                }
+            }
+        }
+
+        if (settings['glitch-wave'] > 0) {
+            const intensity = settings['glitch-wave'] / 100;
+            const tempData = new Uint8ClampedArray(data.length);
+            for (let i = 0; i < data.length; i++) tempData[i] = data[i];
+            const amplitude = 20 * intensity * resolutionScale;
+            const frequency = 0.05 / resolutionScale;
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const idx = (y * width + x) * 4;
+                    const waveShift = Math.floor(amplitude * Math.sin(frequency * y * randomSeed));
+                    const newX = Math.max(0, Math.min(width - 1, x + waveShift));
+                    const srcIdx = (y * width + newX) * 4;
+                    data[idx] = tempData[srcIdx];
+                    data[idx + 1] = tempData[srcIdx + 1];
+                    data[idx + 2] = tempData[srcIdx + 2];
+                    data[idx + 3] = tempData[srcIdx + 3];
                 }
             }
         }
@@ -479,14 +502,12 @@ function showCropModal(dataURL) {
 
             img.src = tempCanvas.toDataURL('image/png');
             closeCropModal();
-            // Keep the upload button visible after confirming crop
             uploadNewPhotoButton.style.display = 'block';
         });
 
         skipBtn.addEventListener('click', () => {
             img.src = cropImage.src;
             closeCropModal();
-            // Keep the upload button visible after skipping crop
             uploadNewPhotoButton.style.display = 'block';
         });
 
@@ -650,7 +671,6 @@ function closeCropModal() {
     isDragging = false;
     rotation = 0;
     cropCanvas.style.cursor = 'default';
-    // Ensure the upload button remains visible after closing the crop modal
     uploadNewPhotoButton.style.display = 'block';
 }
 
@@ -675,14 +695,14 @@ canvas.addEventListener('click', () => {
 
         modalImage.src = canvas.toDataURL('image/png');
 
-        const modalSliders = modalControls.querySelectorAll('.custom-slider');
-        modalSliders.forEach(slider => {
-            const handle = slider.querySelector('.slider-handle');
-            const track = slider.querySelector('.slider-track');
-            const setting = slider.dataset.setting;
-            handle.addEventListener('mousedown', startDrag);
-            handle.addEventListener('touchstart', startDrag);
-            track.addEventListener('click', handleTrackClick);
+        const modalInputs = modalControls.querySelectorAll('input[type="range"]');
+        modalInputs.forEach(input => {
+            input.addEventListener('input', debounce((e) => {
+                const id = e.target.id;
+                settings[id] = parseInt(e.target.value);
+                updateControlIndicators();
+                redrawImage().then(redrawFullResImage);
+            }, 300));
         });
 
         modal.style.display = 'block';
@@ -736,7 +756,6 @@ img.onload = function () {
     
     saveImageState(true);
     redrawImage().then(redrawFullResImage);
-    // Keep the upload button visible after loading an image
     uploadNewPhotoButton.style.display = 'block';
 };
 
@@ -853,68 +872,9 @@ function applyAdvancedFilters(ctx, canvas, noiseSeed, scaleFactor) {
         }
     });
 }
+
 downloadButton.addEventListener('click', async () => {
     await redrawFullResImage();
-
-    // Function to calculate file size from a data URL
-    function getFileSize(dataUrl) {
-        const base64String = dataUrl.split(',')[1];
-        const byteString = atob(base64String);
-        const byteLength = byteString.length;
-        return byteLength; // Return bytes for flexibility
-    }
-
-    // Function to format file size in MB
-    function formatFileSize(bytes) {
-        const mb = bytes / (1024 * 1024); // Convert to MB
-        return `${mb.toFixed(2)} MB`;
-    }
-
-    // Function to estimate file size using a lower-resolution preview
-    function estimateFileSize(width, height, originalWidth, originalHeight, format, quality = 1.0) {
-        // Use a smaller canvas (e.g., 512px max dimension) for estimation
-        const maxPreviewDimension = 512;
-        let previewWidth, previewHeight;
-        const ratio = originalWidth / originalHeight;
-
-        if (ratio > 1) {
-            previewWidth = Math.min(originalWidth, maxPreviewDimension);
-            previewHeight = previewWidth / ratio;
-        } else {
-            previewHeight = Math.min(originalHeight, maxPreviewDimension);
-            previewWidth = previewHeight * ratio;
-        }
-
-        const previewCanvas = document.createElement('canvas');
-        previewCanvas.width = previewWidth;
-        previewCanvas.height = previewHeight;
-        const previewCtx = previewCanvas.getContext('2d');
-        previewCtx.drawImage(fullResCanvas, 0, 0, previewWidth, previewHeight);
-
-        const dataUrl = previewCanvas.toDataURL(format, quality);
-        const previewSizeBytes = getFileSize(dataUrl);
-
-        // Estimate the full-size file size based on the ratio of dimensions
-        const sizeRatio = (width * height) / (previewWidth * previewHeight);
-        const estimatedSizeBytes = previewSizeBytes * sizeRatio;
-        return formatFileSize(estimatedSizeBytes);
-    }
-
-    // Initial file sizes for each format at 100% scale and max quality (using estimation)
-    const scale = 1.0; // Start with 100% scale for initial calculation
-    const scaledWidth = originalWidth * scale;
-    const scaledHeight = originalHeight * scale;
-
-    if (scaledWidth > 8192 || scaledHeight > 8192) {
-        const maxDimension = Math.max(scaledWidth, scaledHeight);
-        const scaleDown = 8192 / maxDimension;
-        scaledWidth *= scaleDown;
-        scaledHeight *= scaleDown;
-    }
-
-    const pngSize = estimateFileSize(scaledWidth, scaledHeight, originalWidth, originalHeight, 'image/png');
-    const jpegSize = estimateFileSize(scaledWidth, scaledHeight, originalWidth, originalHeight, 'image/jpeg', 1.0);
-    const webpSize = estimateFileSize(scaledWidth, scaledHeight, originalWidth, originalHeight, 'image/webp', 1.0);
 
     const popup = document.createElement('div');
     popup.style.position = 'fixed';
@@ -933,19 +893,12 @@ downloadButton.addEventListener('click', async () => {
         <input type="text" id="save-file-name" value="nueva imagen" style="width: 100%; margin-bottom: 10px; padding: 5px; box-sizing: border-box;"><br>
         <label>Formato:</label><br>
         <select id="save-file-type" style="width: 100%; margin-bottom: 10px; padding: 5px;">
-            <option value="image/png">PNG (${pngSize})</option>
-            <option value="image/jpeg">JPEG (${jpegSize})</option>
-            <option value="image/webp">WebP (${webpSize})</option>
+            <option value="image/png" selected>PNG</option>
+            <option value="image/jpeg">JPEG</option>
+            <option value="image/webp">WebP</option>
         </select><br>
-        <label>Escala de resolución:</label><br>
-        <select id="save-resolution-scale" style="width: 100%; margin-bottom: 15px; padding: 5px;">
-            <option value="0.2">20%</option>
-            <option value="0.4">40%</option>
-            <option value="0.6">60%</option>
-            <option value="0.8">80%</option>
-            <option value="1.0" selected>100%</option>
-         
-        </select><br>
+        <label>Escala de resolución (%):</label><br>
+        <input type="number" id="save-resolution-scale" value="100" min="25" max="400" style="width: 100%; margin-bottom: 15px; padding: 5px; box-sizing: border-box;"><br>
         <div style="display: flex; justify-content: space-between; gap: 10px;">
             <button id="save-confirm" style="background-color: #4CAF50; color: white; padding: 10px 20px; border: none; cursor: pointer; flex: 1;">Guardar</button>
             <button id="save-cancel" style="background-color: #f44336; color: white; padding: 10px 20px; border: none; cursor: pointer; flex: 1;">Cancelar</button>
@@ -963,47 +916,10 @@ downloadButton.addEventListener('click', async () => {
     overlay.style.zIndex = '1001';
     document.body.appendChild(overlay);
 
-    // Update file sizes dynamically when format or scale changes (using estimation)
-    const fileTypeSelect = document.getElementById('save-file-type');
-    const resolutionScaleSelect = document.getElementById('save-resolution-scale');
-
-    function updateFileSizes() {
-        const newScale = parseFloat(resolutionScaleSelect.value);
-        const newScaledWidth = originalWidth * newScale;
-        const newScaledHeight = originalHeight * newScale;
-
-        if (newScaledWidth > 8192 || newScaledHeight > 8192) {
-            const maxDimension = Math.max(newScaledWidth, newScaledHeight);
-            const scaleDown = 8192 / maxDimension;
-            newScaledWidth *= scaleDown;
-            newScaledHeight *= scaleDown;
-        }
-
-        const selectedFormat = fileTypeSelect.value;
-        const pngSize = estimateFileSize(newScaledWidth, newScaledHeight, originalWidth, originalHeight, 'image/png');
-        const jpegSize = estimateFileSize(newScaledWidth, newScaledHeight, originalWidth, originalHeight, 'image/jpeg', 1.0);
-        const webpSize = estimateFileSize(newScaledWidth, newScaledHeight, originalWidth, originalHeight, 'image/webp', 1.0);
-
-        const options = fileTypeSelect.options;
-        options[0].text = `PNG (${pngSize})`;
-        options[1].text = `JPEG (${jpegSize})`;
-        options[2].text = `WebP (${webpSize})`;
-
-        // Ensure the selected option reflects the current format
-        if (selectedFormat === 'image/png') options[0].selected = true;
-        else if (selectedFormat === 'image/jpeg') options[1].selected = true;
-        else if (selectedFormat === 'image/webp') options[2].selected = true;
-    }
-
-    // Debounce the update to prevent excessive calculations
-    const debouncedUpdateFileSizes = debounce(updateFileSizes, 300);
-    resolutionScaleSelect.addEventListener('change', debouncedUpdateFileSizes);
-    fileTypeSelect.addEventListener('change', updateFileSizes);
-
     document.getElementById('save-confirm').addEventListener('click', () => {
         const fileName = document.getElementById('save-file-name').value.trim() || 'nueva imagen';
         const fileType = document.getElementById('save-file-type').value;
-        const scale = parseFloat(document.getElementById('save-resolution-scale').value);
+        const scale = parseFloat(document.getElementById('save-resolution-scale').value) / 100;
 
         const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9-_]/g, '');
 
@@ -1064,12 +980,8 @@ undoButton.addEventListener('click', () => {
 
         ctx.putImageData(previousState.imageData, 0, 0);
         Object.assign(settings, previousState.filters);
-        document.querySelectorAll('.custom-slider').forEach(slider => {
-            const setting = slider.dataset.setting;
-            const handle = slider.querySelector('.slider-handle');
-            const value = settings[setting];
-            const percentage = (value - getMinValue(setting)) / (getMaxValue(setting) - getMinValue(setting)) * 100;
-            handle.style.left = `${percentage}%`;
+        document.querySelectorAll('.controls input').forEach(input => {
+            input.value = settings[input.id];
         });
         updateControlIndicators();
         redrawFullResImage();
@@ -1083,12 +995,8 @@ redoButton.addEventListener('click', () => {
 
         ctx.putImageData(nextState.imageData, 0, 0);
         Object.assign(settings, nextState.filters);
-        document.querySelectorAll('.custom-slider').forEach(slider => {
-            const setting = slider.dataset.setting;
-            const handle = slider.querySelector('.slider-handle');
-            const value = settings[setting];
-            const percentage = (value - getMinValue(setting)) / (getMaxValue(setting) - getMinValue(setting)) * 100;
-            handle.style.left = `${percentage}%`;
+        document.querySelectorAll('.controls input').forEach(input => {
+            input.value = settings[input.id];
         });
         updateControlIndicators();
         redrawFullResImage();
@@ -1111,129 +1019,35 @@ restoreButton.addEventListener('click', () => {
         'glitch-scanline': 0,
         'glitch-chromatic': 0,
         'glitch-rgb-split': 0,
+        'glitch-invert': 0,
         'glitch-vhs': 0,
         'glitch-chromatic-vertical': 0,
         'glitch-chromatic-diagonal': 0,
-        'glitch-pixel-shuffle': 0
+        'glitch-pixel-shuffle': 0,
+        'glitch-wave': 0
     };
-    document.querySelectorAll('.custom-slider').forEach(slider => {
-        const setting = slider.dataset.setting;
-        const handle = slider.querySelector('.slider-handle');
-        const value = settings[setting];
-        const percentage = (value - getMinValue(setting)) / (getMaxValue(setting) - getMinValue(setting)) * 100;
-        handle.style.left = `${percentage}%`;
+    document.querySelectorAll('.controls input').forEach(input => {
+        input.value = settings[input.id];
     });
     updateControlIndicators();
     saveImageState(true);
     redrawFullResImage();
 });
 
-function getMinValue(setting) {
-    if (setting === 'grayscale' || setting.startsWith('glitch-')) return 0;
-    return 0; // Default for most settings, adjust as needed
-}
+controls.forEach(control => {
+    control.addEventListener('input', (e) => {
+        const id = e.target.id;
+        settings[id] = parseInt(e.target.value);
+        updateControlIndicators();
+        if (id.startsWith('glitch-')) {
+            lastAppliedEffect = id;
+        }
+    });
 
-function getMaxValue(setting) {
-    if (setting === 'grayscale') return 100;
-    if (setting.startsWith('glitch-')) return 100;
-    return 200; // Default for brightness, contrast, etc.
-}
-
-function startDrag(e) {
-    e.preventDefault();
-    isSliderDragging = true;
-    activeSlider = e.target.closest('.custom-slider');
-    const rect = activeSlider.getBoundingClientRect();
-    const setting = activeSlider.dataset.setting;
-    startX = (e.clientX || e.touches[0].clientX) - rect.left;
-
-    document.addEventListener('mousemove', drag);
-    document.addEventListener('touchmove', drag);
-    document.addEventListener('mouseup', stopDrag);
-    document.addEventListener('touchend', stopDrag);
-}
-
-function drag(e) {
-    if (!isSliderDragging || !activeSlider) return;
-    e.preventDefault();
-    const rect = activeSlider.getBoundingClientRect();
-    const x = (e.clientX || e.touches[0].clientX) - rect.left;
-    const trackWidth = rect.width;
-    let percentage = (x / trackWidth) * 100;
-    percentage = Math.max(0, Math.min(100, percentage));
-
-    const handle = activeSlider.querySelector('.slider-handle');
-    handle.style.left = `${percentage}%`;
-
-    const setting = activeSlider.dataset.setting;
-    const min = getMinValue(setting);
-    const max = getMaxValue(setting);
-    const value = Math.round((percentage / 100) * (max - min) + min);
-    settings[setting] = value;
-
-    const indicator = activeSlider.querySelector('.value-indicator');
-    if (indicator) indicator.textContent = `${value}%`;
-
-    if (setting.startsWith('glitch-')) {
-        lastAppliedEffect = setting;
-    }
-    // Use throttle instead of debounce for redraw
-    throttledRedraw();
-}
-
-function handleTrackClick(e) {
-    e.preventDefault();
-    const track = e.target.closest('.slider-track');
-    if (!track) return;
-    const slider = track.closest('.custom-slider');
-    const rect = track.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const trackWidth = rect.width;
-    let percentage = (x / trackWidth) * 100;
-    percentage = Math.max(0, Math.min(100, percentage));
-
-    const handle = slider.querySelector('.slider-handle');
-    handle.style.left = `${percentage}%`;
-
-    const setting = slider.dataset.setting;
-    const min = getMinValue(setting);
-    const max = getMaxValue(setting);
-    const value = Math.round((percentage / 100) * (max - min) + min);
-    settings[setting] = value;
-
-    const indicator = slider.querySelector('.value-indicator');
-    if (indicator) indicator.textContent = `${value}%`;
-
-    if (setting.startsWith('glitch-')) {
-        lastAppliedEffect = setting;
-    }
-    throttledRedraw();
-    saveImageState();
-}
-
-function stopDrag() {
-    isSliderDragging = false;
-    activeSlider = null;
-    document.removeEventListener('mousemove', drag);
-    document.removeEventListener('touchmove', drag);
-    document.removeEventListener('mouseup', stopDrag);
-    document.removeEventListener('touchend', stopDrag);
-    saveImageState();
-}
-
-// Add throttled redraw function
-const throttledRedraw = throttle(() => {
-    redrawImage().then(redrawFullResImage);
-}, 100); // Limit to one redraw every 100ms
-customSliders.forEach(slider => {
-    const handle = slider.querySelector('.slider-handle');
-    const track = slider.querySelector('.slider-track');
-    const setting = slider.dataset.setting;
-    const value = settings[setting];
-    const percentage = (value - getMinValue(setting)) / (getMaxValue(setting) - getMinValue(setting)) * 100;
-    handle.style.left = `${percentage}%`;
-
-    handle.addEventListener('mousedown', startDrag);
-    handle.addEventListener('touchstart', startDrag);
-    track.addEventListener('click', handleTrackClick);
+    control.addEventListener('input', debounce((e) => {
+        const id = e.target.id;
+        settings[id] = parseInt(e.target.value);
+        updateControlIndicators();
+        redrawImage().then(redrawFullResImage);
+    }, 300));
 });
