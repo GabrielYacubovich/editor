@@ -804,7 +804,7 @@ function resizeCrop(x, y) {
         cropRect.width = newWidth;
         cropRect.height = newHeight;
     } else if (isDragging === 'bottom-right') {
-        newWidth = clamp(x - cropRect.x, 10, cropCanvas.width - cropRect.x);
+        newWidth = clamp(x - cropRect.x, 10, cropCanvas.width - cropCanvas.width - cropRect.x);
         newHeight = lockAspectRatio ? newWidth / aspectRatio : clamp(y - cropRect.y, 10, cropCanvas.height - cropRect.y);
         cropRect.width = newWidth;
         cropRect.height = newHeight;
@@ -880,9 +880,10 @@ img.onload = function () {
     fullResCanvas.width = originalWidth;
     fullResCanvas.height = originalHeight;
 
-    // Calculate preview dimensions
+    // Calculate preview dimensions with a minimum size
     const maxDisplayWidth = Math.min(1920, window.innerWidth - 100);
     const maxDisplayHeight = Math.min(1080, window.innerHeight - 250);
+    const minPreviewDimension = 800; // Minimum width or height to reduce pixelation
     const ratio = originalWidth / originalHeight;
 
     if (ratio > 1) {
@@ -892,11 +893,19 @@ img.onload = function () {
             previewHeight = maxDisplayHeight;
             previewWidth = previewHeight * ratio;
         }
+        if (previewHeight < minPreviewDimension) {
+            previewHeight = minPreviewDimension;
+            previewWidth = previewHeight * ratio;
+        }
     } else {
         previewHeight = Math.min(originalHeight, maxDisplayHeight);
         previewWidth = previewHeight * ratio;
         if (previewWidth > maxDisplayWidth) {
             previewWidth = maxDisplayWidth;
+            previewHeight = previewWidth / ratio;
+        }
+        if (previewWidth < minPreviewDimension) {
+            previewWidth = minPreviewDimension;
             previewHeight = previewWidth / ratio;
         }
     }
@@ -1112,6 +1121,18 @@ downloadButton.addEventListener('click', () => {
     });
 });
 
+function saveImageState(isOriginal = false) {
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    if (isOriginal) {
+        history = [{ filters: { ...settings }, imageData }];
+        redoHistory = [];
+        lastAppliedEffect = null;
+    } else {
+        history.push({ filters: { ...settings }, imageData });
+        redoHistory = [];
+        if (history.length > 50) history.shift();
+    }
+}
 function saveImageState(isOriginal = false) {
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     if (isOriginal) {
