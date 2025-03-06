@@ -121,48 +121,48 @@ function showLoadingIndicator(show = true) {
 }
 
 function redrawImage() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    if (isShowingOriginal && originalImageData) {
-        ctx.putImageData(originalImageData, 0, 0);
-    } else {
-        ctx.filter = `brightness(${settings.brightness * (settings.exposure / 100)}%)
-                      contrast(${settings.contrast}%)
-                      grayscale(${settings.grayscale}%)
-                      saturate(${settings.saturation}%)
-                      sepia(${(settings.temperature - 100) / 100}%)`;
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        const scaleFactor = Math.min(previewWidth / originalWidth, previewHeight / originalHeight);
-        showLoadingIndicator(true);
-        return applyAdvancedFilters(ctx, canvas, noiseSeed, scaleFactor).then(() => {
-            return applyGlitchEffects(ctx, canvas, noiseSeed, scaleFactor).then(() => {
-                if (modal.style.display === 'block') {
-                    modalImage.src = canvas.toDataURL('image/png');
-                }
-                saveImageState();
-                showLoadingIndicator(false);
-            });
-        }).catch(error => {
-            console.error('Error in redraw:', error);
-            showLoadingIndicator(false);
-        });
-    }
-    return Promise.resolve().then(() => showLoadingIndicator(false));
-}
+    showLoadingIndicator(true);
 
-function redrawFullResImage() {
+    // Set up full-res canvas
     fullResCanvas.width = originalWidth;
     fullResCanvas.height = originalHeight;
     fullResCtx.clearRect(0, 0, fullResCanvas.width, fullResCanvas.height);
+
+    // Apply basic filters to full-res canvas
     fullResCtx.filter = `brightness(${settings.brightness * (settings.exposure / 100)}%)
                          contrast(${settings.contrast}%)
                          grayscale(${settings.grayscale}%)
                          saturate(${settings.saturation}%)
                          sepia(${(settings.temperature - 100) / 100}%)`;
-    fullResCtx.drawImage(img, 0, 0, fullResCanvas.width, fullResCanvas.height);
-    const scaleFactor = Math.min(previewWidth / originalWidth, previewHeight / originalHeight);
-    return applyAdvancedFilters(fullResCtx, fullResCanvas, noiseSeed, scaleFactor).then(() => {
-        return applyGlitchEffects(fullResCtx, fullResCanvas, noiseSeed, scaleFactor);
-    });
+    fullResCtx.drawImage(img, 0, 0, originalWidth, originalHeight);
+
+    // Apply advanced filters and glitches at full resolution
+    const scaleFactor = 1; // Full resolution
+    return applyAdvancedFilters(fullResCtx, fullResCanvas, noiseSeed, scaleFactor)
+        .then(() => applyGlitchEffects(fullResCtx, fullResCanvas, noiseSeed, scaleFactor))
+        .then(() => {
+            // Update preview canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (isShowingOriginal && originalImageData) {
+                ctx.putImageData(originalImageData, 0, 0);
+            } else {
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
+                ctx.drawImage(fullResCanvas, 0, 0, canvas.width, canvas.height);
+            }
+
+            // Update modal if open
+            if (modal.style.display === 'block') {
+                modalImage.src = canvas.toDataURL('image/png');
+            }
+
+            saveImageState();
+            showLoadingIndicator(false);
+        })
+        .catch(error => {
+            console.error('Error in redraw:', error);
+            showLoadingIndicator(false);
+        });
 }
 
 function seededRandom(seed) {
@@ -179,7 +179,7 @@ function applyGlitchEffects(ctx, canvas, seed = noiseSeed, scaleFactor = 1) {
         const height = canvas.height;
         const resolutionScale = scaleFactor;
 
-        const previewMinDimension = Math.min(previewWidth, previewHeight);
+        const previewMinDimension = Math.min(width, height);
         const baseShift = 50;
 
         if (settings['glitch-scanline'] > 0) {
@@ -701,7 +701,7 @@ canvas.addEventListener('click', () => {
                 const id = e.target.id;
                 settings[id] = parseInt(e.target.value);
                 updateControlIndicators();
-                redrawImage().then(redrawFullResImage);
+                redrawImage();
             }, 300));
         });
 
@@ -726,10 +726,15 @@ window.addEventListener('click', (event) => {
 img.onload = function () {
     originalWidth = img.width;
     originalHeight = img.height;
-    const ratio = originalWidth / originalHeight;
 
+    // Set fullResCanvas to original dimensions
+    fullResCanvas.width = originalWidth;
+    fullResCanvas.height = originalHeight;
+
+    // Calculate preview dimensions
     const maxDisplayWidth = Math.min(1920, window.innerWidth - 100);
     const maxDisplayHeight = Math.min(1080, window.innerHeight - 250);
+    const ratio = originalWidth / originalHeight;
 
     if (ratio > 1) {
         previewWidth = Math.min(originalWidth, maxDisplayWidth);
@@ -750,13 +755,17 @@ img.onload = function () {
     canvas.width = previewWidth;
     canvas.height = previewHeight;
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(img, 0, 0, previewWidth, previewHeight);
-    originalImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    
+    // Store original image data for toggle
+    fullResCtx.drawImage(img, 0, 0, originalWidth, originalHeight);
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = previewWidth;
+    tempCanvas.height = previewHeight;
+    const tempCtx = tempCanvas.getContext('2d');
+    tempCtx.drawImage(img, 0, 0, previewWidth, previewHeight);
+    originalImageData = tempCtx.getImageData(0, 0, previewWidth, previewHeight);
+
     saveImageState(true);
-    redrawImage().then(redrawFullResImage);
-    uploadNewPhotoButton.style.display = 'block';
+    redrawImage();
 };
 
 let filterWorker;
@@ -873,9 +882,7 @@ function applyAdvancedFilters(ctx, canvas, noiseSeed, scaleFactor) {
     });
 }
 
-downloadButton.addEventListener('click', async () => {
-    await redrawFullResImage();
-
+downloadButton.addEventListener('click', () => {
     const popup = document.createElement('div');
     popup.style.position = 'fixed';
     popup.style.top = '50%';
@@ -922,7 +929,6 @@ downloadButton.addEventListener('click', async () => {
         const scale = parseFloat(document.getElementById('save-resolution-scale').value) / 100;
 
         const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9-_]/g, '');
-
         const tempCanvas = document.createElement('canvas');
         tempCanvas.width = originalWidth * scale;
         tempCanvas.height = originalHeight * scale;
@@ -933,10 +939,8 @@ downloadButton.addEventListener('click', async () => {
             const scaleDown = 8192 / maxDimension;
             tempCanvas.width = originalWidth * scale * scaleDown;
             tempCanvas.height = originalHeight * scale * scaleDown;
-            tempCtx.drawImage(fullResCanvas, 0, 0, tempCanvas.width, tempCanvas.height);
-        } else {
-            tempCtx.drawImage(fullResCanvas, 0, 0, tempCanvas.width, tempCanvas.height);
         }
+        tempCtx.drawImage(fullResCanvas, 0, 0, tempCanvas.width, tempCanvas.height);
 
         const link = document.createElement('a');
         let extension = fileType.split('/')[1];
@@ -984,7 +988,7 @@ undoButton.addEventListener('click', () => {
             input.value = settings[input.id];
         });
         updateControlIndicators();
-        redrawFullResImage();
+        redrawImage();
     }
 });
 
@@ -999,7 +1003,7 @@ redoButton.addEventListener('click', () => {
             input.value = settings[input.id];
         });
         updateControlIndicators();
-        redrawFullResImage();
+        redrawImage();
     }
 });
 
@@ -1031,7 +1035,7 @@ restoreButton.addEventListener('click', () => {
     });
     updateControlIndicators();
     saveImageState(true);
-    redrawFullResImage();
+    redrawImage();
 });
 
 controls.forEach(control => {
@@ -1044,10 +1048,7 @@ controls.forEach(control => {
         }
     });
 
-    control.addEventListener('input', debounce((e) => {
-        const id = e.target.id;
-        settings[id] = parseInt(e.target.value);
-        updateControlIndicators();
-        redrawImage().then(redrawFullResImage);
+    control.addEventListener('input', debounce(() => {
+        redrawImage();
     }, 300));
 });
