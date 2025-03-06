@@ -97,6 +97,14 @@ canvas {
     transform: none;
 }
 
+/* Complex Filters Header */
+.controls h3 {
+    margin: 20px 0 10px;
+    font-size: 16px;
+    font-weight: bold;
+    color: #333;
+}
+
 /* Action buttons */
 .action-buttons {
     margin-top: 20px;
@@ -125,7 +133,7 @@ button:hover {
 /* Specific glitch button styling */
 #glitch-scanline, #glitch-chromatic, #glitch-pixel,
 #glitch-databend, #glitch-wave, #glitch-bleed {
-    background-color: #ff4081; /* Distinct pinkish color for glitch effects */
+    background-color: #ff4081;
 }
 
 #glitch-scanline:hover, #glitch-chromatic:hover, #glitch-pixel:hover,
