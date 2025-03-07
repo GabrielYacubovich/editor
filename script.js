@@ -130,15 +130,13 @@ function showLoadingIndicator(show = true) {
     }
 }
 
-function redrawImage() {
+function redrawImage(saveState = true) {
     showLoadingIndicator(true);
 
-    // Set up full-res canvas
     fullResCanvas.width = originalWidth;
     fullResCanvas.height = originalHeight;
     fullResCtx.clearRect(0, 0, fullResCanvas.width, fullResCanvas.height);
 
-    // Apply basic filters to full-res canvas
     fullResCtx.filter = `brightness(${settings.brightness * (settings.exposure / 100)}%)
                          contrast(${settings.contrast}%)
                          grayscale(${settings.grayscale}%)
@@ -146,13 +144,11 @@ function redrawImage() {
                          sepia(${(settings.temperature - 100) / 100}%)`;
     fullResCtx.drawImage(img, 0, 0, originalWidth, originalHeight);
 
-    // Apply advanced filters, glitches, and complex filters at full resolution
-    const scaleFactor = 1; // Full resolution
+    const scaleFactor = 1; // Full resolution for glitch effects
     return applyAdvancedFilters(fullResCtx, fullResCanvas, noiseSeed, scaleFactor)
         .then(() => applyGlitchEffects(fullResCtx, fullResCanvas, noiseSeed, scaleFactor))
         .then(() => applyComplexFilters(fullResCtx, fullResCanvas, noiseSeed, scaleFactor))
         .then(() => {
-            // Update preview canvas
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             if (isShowingOriginal && originalImageData) {
                 ctx.putImageData(originalImageData, 0, 0);
@@ -162,12 +158,13 @@ function redrawImage() {
                 ctx.drawImage(fullResCanvas, 0, 0, canvas.width, canvas.height);
             }
 
-            // Update modal if open
             if (modal.style.display === 'block') {
                 modalImage.src = canvas.toDataURL('image/png');
             }
 
-            saveImageState();
+            if (saveState) {
+                saveImageState();
+            }
             showLoadingIndicator(false);
         })
         .catch(error => {
@@ -412,7 +409,6 @@ function applyComplexFilters(ctx, canvas, seed = noiseSeed, scaleFactor = 1) {
         const width = canvas.width;
         const height = canvas.height;
 
-        // Pixel Grain
         if (settings['pixel-grain'] > 0) {
             const intensity = settings['pixel-grain'] / 100;
             for (let i = 0; i < data.length; i += 4) {
@@ -424,7 +420,6 @@ function applyComplexFilters(ctx, canvas, seed = noiseSeed, scaleFactor = 1) {
             }
         }
 
-        // Pixel Dither (Floyd-Steinberg)
         if (settings['pixel-dither'] > 0) {
             const intensity = settings['pixel-dither'] / 100;
             const tempData = new Uint8ClampedArray(data.length);
@@ -451,7 +446,6 @@ function applyComplexFilters(ctx, canvas, seed = noiseSeed, scaleFactor = 1) {
             for (let i = 0; i < data.length; i++) data[i] = tempData[i];
         }
 
-        // Kaleidoscope
         if (settings['kaleidoscope-segments'] > 0) {
             const segments = Math.max(1, settings['kaleidoscope-segments']);
             const offset = (settings['kaleidoscope-offset'] / 100) * Math.min(width, height) / 2;
@@ -482,7 +476,6 @@ function applyComplexFilters(ctx, canvas, seed = noiseSeed, scaleFactor = 1) {
             data = imageData.data;
         }
 
-        // Vortex Twist
         if (settings['vortex-twist'] > 0) {
             const intensity = settings['vortex-twist'] / 100;
             const tempData = new Uint8ClampedArray(data.length);
@@ -509,7 +502,6 @@ function applyComplexFilters(ctx, canvas, seed = noiseSeed, scaleFactor = 1) {
             }
         }
 
-        // Edge Detection (Sobel)
         if (settings['edge-detect'] > 0) {
             const intensity = settings['edge-detect'] / 100;
             const tempData = new Uint8ClampedArray(data.length);
@@ -545,7 +537,7 @@ function applyComplexFilters(ctx, canvas, seed = noiseSeed, scaleFactor = 1) {
 toggleOriginalButton.addEventListener('click', () => {
     isShowingOriginal = !isShowingOriginal;
     toggleOriginalButton.textContent = isShowingOriginal ? 'Ver Editada' : 'Ver Original';
-    redrawImage();
+    redrawImage(false); // No need to save state on toggle
 });
 
 function showCropModal(dataURL) {
@@ -722,12 +714,35 @@ cropCanvas.addEventListener('mousemove', (e) => {
         cropCanvas.style.cursor = 'nesw-resize';
     } else if (nearCorner(x, y, cropRect.x + cropRect.width, cropRect.y + cropRect.height, resizeMargin)) {
         cropCanvas.style.cursor = 'nwse-resize';
+    } else if (nearSide(x, y, cropRect.x, cropRect.y, cropRect.width, cropRect.height, 'left', resizeMargin)) {
+        cropCanvas.style.cursor = 'ew-resize';
+    } else if (nearSide(x, y, cropRect.x, cropRect.y, cropRect.width, cropRect.height, 'right', resizeMargin)) {
+        cropCanvas.style.cursor = 'ew-resize';
+    } else if (nearSide(x, y, cropRect.x, cropRect.y, cropRect.width, cropRect.height, 'top', resizeMargin)) {
+        cropCanvas.style.cursor = 'ns-resize';
+    } else if (nearSide(x, y, cropRect.x, cropRect.y, cropRect.width, cropRect.height, 'bottom', resizeMargin)) {
+        cropCanvas.style.cursor = 'ns-resize';
     } else if (insideCrop(x, y)) {
         cropCanvas.style.cursor = 'move';
     } else {
         cropCanvas.style.cursor = 'default';
     }
 });
+
+function nearSide(x, y, rectX, rectY, width, height, side, margin) {
+    switch (side) {
+        case 'left':
+            return Math.abs(x - rectX) < margin && y > rectY && y < rectY + height;
+        case 'right':
+            return Math.abs(x - (rectX + width)) < margin && y > rectY && y < rectY + height;
+        case 'top':
+            return Math.abs(y - rectY) < margin && x > rectX && x < rectX + width;
+        case 'bottom':
+            return Math.abs(y - (rectY + height)) < margin && x > rectX && x < rectX + width;
+        default:
+            return false;
+    }
+}
 
 function startCropDrag(e) {
     e.preventDefault();
@@ -744,6 +759,14 @@ function startCropDrag(e) {
         isDragging = 'bottom-left';
     } else if (nearCorner(x, y, cropRect.x + cropRect.width, cropRect.y + cropRect.height, resizeMargin)) {
         isDragging = 'bottom-right';
+    } else if (nearSide(x, y, cropRect.x, cropRect.y, cropRect.width, cropRect.height, 'left', resizeMargin)) {
+        isDragging = 'left';
+    } else if (nearSide(x, y, cropRect.x, cropRect.y, cropRect.width, cropRect.height, 'right', resizeMargin)) {
+        isDragging = 'right';
+    } else if (nearSide(x, y, cropRect.x, cropRect.y, cropRect.width, cropRect.height, 'top', resizeMargin)) {
+        isDragging = 'top';
+    } else if (nearSide(x, y, cropRect.x, cropRect.y, cropRect.width, cropRect.height, 'bottom', resizeMargin)) {
+        isDragging = 'bottom';
     } else if (insideCrop(x, y)) {
         isDragging = 'move';
         startX = x - cropRect.x;
@@ -784,6 +807,7 @@ function insideCrop(x, y) {
 
 function resizeCrop(x, y) {
     let newWidth, newHeight;
+
     if (isDragging === 'top-left') {
         newWidth = clamp(cropRect.x + cropRect.width - x, 10, cropCanvas.width - cropRect.x);
         newHeight = lockAspectRatio ? newWidth / aspectRatio : clamp(cropRect.y + cropRect.height - y, 10, cropCanvas.height - cropRect.y);
@@ -804,10 +828,32 @@ function resizeCrop(x, y) {
         cropRect.width = newWidth;
         cropRect.height = newHeight;
     } else if (isDragging === 'bottom-right') {
-        newWidth = clamp(x - cropRect.x, 10, cropCanvas.width - cropCanvas.width - cropRect.x);
+        newWidth = clamp(x - cropRect.x, 10, cropCanvas.width - cropRect.x);
         newHeight = lockAspectRatio ? newWidth / aspectRatio : clamp(y - cropRect.y, 10, cropCanvas.height - cropRect.y);
         cropRect.width = newWidth;
         cropRect.height = newHeight;
+    } else if (isDragging === 'left') {
+        newWidth = clamp(cropRect.x + cropRect.width - x, 10, cropCanvas.width - cropRect.x);
+        newHeight = lockAspectRatio ? newWidth / aspectRatio : cropRect.height;
+        cropRect.x = clamp(x, 0, cropRect.x + cropRect.width - 10);
+        cropRect.width = newWidth;
+        if (lockAspectRatio) cropRect.height = newHeight;
+    } else if (isDragging === 'right') {
+        newWidth = clamp(x - cropRect.x, 10, cropCanvas.width - cropRect.x);
+        newHeight = lockAspectRatio ? newWidth / aspectRatio : cropRect.height;
+        cropRect.width = newWidth;
+        if (lockAspectRatio) cropRect.height = newHeight;
+    } else if (isDragging === 'top') {
+        newHeight = clamp(cropRect.y + cropRect.height - y, 10, cropCanvas.height - cropRect.y);
+        newWidth = lockAspectRatio ? newHeight * aspectRatio : cropRect.width;
+        cropRect.y = clamp(y, 0, cropRect.y + cropRect.height - 10);
+        cropRect.height = newHeight;
+        if (lockAspectRatio) cropRect.width = newWidth;
+    } else if (isDragging === 'bottom') {
+        newHeight = clamp(y - cropRect.y, 10, cropCanvas.height - cropRect.y);
+        newWidth = lockAspectRatio ? newHeight * aspectRatio : cropRect.width;
+        cropRect.height = newHeight;
+        if (lockAspectRatio) cropRect.width = newWidth;
     }
 }
 
@@ -850,7 +896,7 @@ canvas.addEventListener('click', () => {
                 const id = e.target.id;
                 settings[id] = parseInt(e.target.value);
                 updateControlIndicators();
-                redrawImage();
+                redrawImage(true);
             }, 300));
         });
 
@@ -876,14 +922,12 @@ img.onload = function () {
     originalWidth = img.width;
     originalHeight = img.height;
 
-    // Set fullResCanvas to original dimensions
     fullResCanvas.width = originalWidth;
     fullResCanvas.height = originalHeight;
 
-    // Calculate preview dimensions with a minimum size
     const maxDisplayWidth = Math.min(1920, window.innerWidth - 100);
     const maxDisplayHeight = Math.min(1080, window.innerHeight - 250);
-    const minPreviewDimension = 800; // Minimum width or height to reduce pixelation
+    const minPreviewDimension = 800;
     const ratio = originalWidth / originalHeight;
 
     if (ratio > 1) {
@@ -913,7 +957,6 @@ img.onload = function () {
     canvas.width = previewWidth;
     canvas.height = previewHeight;
 
-    // Store original image data for toggle
     fullResCtx.drawImage(img, 0, 0, originalWidth, originalHeight);
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = previewWidth;
@@ -923,7 +966,7 @@ img.onload = function () {
     originalImageData = tempCtx.getImageData(0, 0, previewWidth, previewHeight);
 
     saveImageState(true);
-    redrawImage();
+    redrawImage(true);
 };
 
 let filterWorker;
@@ -1098,16 +1141,26 @@ downloadButton.addEventListener('click', () => {
             tempCanvas.width = originalWidth * scale * scaleDown;
             tempCanvas.height = originalHeight * scale * scaleDown;
         }
-        tempCtx.drawImage(fullResCanvas, 0, 0, tempCanvas.width, tempCanvas.height);
 
-        const link = document.createElement('a');
-        let extension = fileType.split('/')[1];
-        link.download = `${sanitizedFileName}-${Math.round(scale * 100)}%.${extension}`;
-        link.href = tempCanvas.toDataURL(fileType === 'image/png' ? 'image/png' : fileType, 1.0);
-        link.click();
+        redrawImage(false).then(() => {
+            tempCtx.imageSmoothingEnabled = true;
+            tempCtx.imageSmoothingQuality = 'high';
+            tempCtx.drawImage(fullResCanvas, 0, 0, tempCanvas.width, tempCanvas.height);
 
-        document.body.removeChild(popup);
-        document.body.removeChild(overlay);
+            const link = document.createElement('a');
+            const extension = fileType.split('/')[1];
+            link.download = `${sanitizedFileName}-${Math.round(scale * 100)}%.${extension}`;
+            link.href = tempCanvas.toDataURL(fileType === 'image/png' ? 'image/png' : fileType, 1.0);
+            link.click();
+
+            document.body.removeChild(popup);
+            document.body.removeChild(overlay);
+        }).catch(error => {
+            console.error('Error rendering image for download:', error);
+            alert('Hubo un error al preparar la imagen para descargar.');
+            document.body.removeChild(popup);
+            document.body.removeChild(overlay);
+        });
     });
 
     document.getElementById('save-cancel').addEventListener('click', () => {
@@ -1129,19 +1182,6 @@ function saveImageState(isOriginal = false) {
         lastAppliedEffect = null;
     } else {
         history.push({ filters: { ...settings }, imageData });
-        redoHistory = [];
-        if (history.length > 50) history.shift();
-    }
-}
-function saveImageState(isOriginal = false) {
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    if (isOriginal) {
-        history = [{ filters: { ...settings }, imageData }];
-        redoHistory = [];
-        lastAppliedEffect = null;
-    } else {
-        history.push({ filters: { ...settings }, imageData });
-        redoHistory = [];
         if (history.length > 50) history.shift();
     }
 }
@@ -1158,7 +1198,6 @@ undoButton.addEventListener('click', () => {
             input.value = settings[input.id];
         });
         updateControlIndicators();
-        redrawImage();
     }
 });
 
@@ -1173,7 +1212,6 @@ redoButton.addEventListener('click', () => {
             input.value = settings[input.id];
         });
         updateControlIndicators();
-        redrawImage();
     }
 });
 
@@ -1211,7 +1249,7 @@ restoreButton.addEventListener('click', () => {
     });
     updateControlIndicators();
     saveImageState(true);
-    redrawImage();
+    redrawImage(true);
 });
 
 controls.forEach(control => {
@@ -1225,6 +1263,7 @@ controls.forEach(control => {
     });
 
     control.addEventListener('input', debounce(() => {
-        redrawImage();
+        redoHistory = []; // Clear redo history only on new edits
+        redrawImage(true);
     }, 300));
 });
