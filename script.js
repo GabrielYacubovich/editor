@@ -130,6 +130,7 @@ function showLoadingIndicator(show = true) {
     }
 }
 
+
 function redrawImage(saveState = true) {
     showLoadingIndicator(true);
 
@@ -144,7 +145,7 @@ function redrawImage(saveState = true) {
                          sepia(${(settings.temperature - 100) / 100}%)`;
     fullResCtx.drawImage(img, 0, 0, originalWidth, originalHeight);
 
-    const scaleFactor = 1; // Full resolution for glitch effects
+    const scaleFactor = 1;
     return applyAdvancedFilters(fullResCtx, fullResCanvas, noiseSeed, scaleFactor)
         .then(() => applyGlitchEffects(fullResCtx, fullResCanvas, noiseSeed, scaleFactor))
         .then(() => applyComplexFilters(fullResCtx, fullResCanvas, noiseSeed, scaleFactor))
@@ -162,6 +163,7 @@ function redrawImage(saveState = true) {
                 modalImage.src = canvas.toDataURL('image/png');
             }
 
+            // Save the state after the canvas is fully updated
             if (saveState) {
                 saveImageState();
             }
@@ -172,12 +174,6 @@ function redrawImage(saveState = true) {
             showLoadingIndicator(false);
         });
 }
-
-function seededRandom(seed) {
-    let x = Math.sin(seed++) * 10000;
-    return x - Math.floor(x);
-}
-
 function applyGlitchEffects(ctx, canvas, seed = noiseSeed, scaleFactor = 1) {
     return new Promise((resolve) => {
         let randomSeed = seed;
@@ -965,8 +961,11 @@ img.onload = function () {
     tempCtx.drawImage(img, 0, 0, previewWidth, previewHeight);
     originalImageData = tempCtx.getImageData(0, 0, previewWidth, previewHeight);
 
-    saveImageState(true);
-    redrawImage(true);
+    // Draw the initial image on the canvas before saving the state
+    ctx.drawImage(img, 0, 0, previewWidth, previewHeight);
+    saveImageState(true); // Save the initial state with valid imageData
+    redrawImage(true); // Redraw with initial settings
+    updateButtonStates(); // Update button states (if using the disable feature)
 };
 
 let filterWorker;
@@ -1180,9 +1179,11 @@ function saveImageState(isOriginal = false) {
         history = [{ filters: { ...settings }, imageData }];
         redoHistory = [];
         lastAppliedEffect = null;
+        console.log("Saved initial state, history length:", history.length);
     } else {
         history.push({ filters: { ...settings }, imageData });
         if (history.length > 50) history.shift();
+        console.log("Saved new state, history length:", history.length);
     }
 }
 
@@ -1198,7 +1199,21 @@ undoButton.addEventListener('click', () => {
             input.value = settings[input.id];
         });
         updateControlIndicators();
+    } else if (history.length === 1) {
+        const initialState = history[0];
+        if (initialState.imageData) {
+            ctx.putImageData(initialState.imageData, 0, 0);
+            Object.assign(settings, initialState.filters);
+            document.querySelectorAll('.controls input').forEach(input => {
+                input.value = settings[input.id];
+            });
+            updateControlIndicators();
+        } else {
+            console.error("Initial state has no image data!");
+            ctx.putImageData(originalImageData, 0, 0);
+        }
     }
+    updateButtonStates();
 });
 
 redoButton.addEventListener('click', () => {
@@ -1213,8 +1228,8 @@ redoButton.addEventListener('click', () => {
         });
         updateControlIndicators();
     }
+    updateButtonStates();
 });
-
 restoreButton.addEventListener('click', () => {
     ctx.putImageData(originalImageData, 0, 0);
     settings = { 
@@ -1250,6 +1265,7 @@ restoreButton.addEventListener('click', () => {
     updateControlIndicators();
     saveImageState(true);
     redrawImage(true);
+    updateButtonStates(); // Add this to update button states
 });
 
 controls.forEach(control => {
@@ -1263,7 +1279,7 @@ controls.forEach(control => {
     });
 
     control.addEventListener('input', debounce(() => {
-        redoHistory = []; // Clear redo history only on new edits
-        redrawImage(true);
+        redoHistory = []; // Clear redo history on new edits
+        redrawImage(true); // Redraw and save state
     }, 300));
 });
