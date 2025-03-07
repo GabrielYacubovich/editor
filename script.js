@@ -130,7 +130,8 @@ function showLoadingIndicator(show = true) {
     }
 }
 
-function redrawImage(saveState = true) {
+// Update redrawImage to not save state by default since we handle it on input
+function redrawImage(saveState = false) {
     showLoadingIndicator(true);
 
     fullResCanvas.width = originalWidth;
@@ -172,7 +173,6 @@ function redrawImage(saveState = true) {
             showLoadingIndicator(false);
         });
 }
-
 function seededRandom(seed) {
     let x = Math.sin(seed++) * 10000;
     return x - Math.floor(x);
@@ -965,8 +965,10 @@ img.onload = function () {
     tempCtx.drawImage(img, 0, 0, previewWidth, previewHeight);
     originalImageData = tempCtx.getImageData(0, 0, previewWidth, previewHeight);
 
-    saveImageState(true);
-    redrawImage(true);
+    // Draw the initial image on the canvas first
+    ctx.drawImage(img, 0, 0, previewWidth, previewHeight);
+    saveImageState(true); // Save the initial state with valid imageData
+    redrawImage(false); // Redraw without saving state again
 };
 
 let filterWorker;
@@ -1174,6 +1176,8 @@ downloadButton.addEventListener('click', () => {
     });
 });
 
+let isRedrawing = false;
+
 function saveImageState(isOriginal = false) {
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     if (isOriginal) {
@@ -1181,23 +1185,30 @@ function saveImageState(isOriginal = false) {
         redoHistory = [];
         lastAppliedEffect = null;
     } else {
-        history.push({ filters: { ...settings }, imageData });
-        if (history.length > 50) history.shift();
+        const lastState = history[history.length - 1];
+        if (JSON.stringify(lastState.filters) !== JSON.stringify(settings)) {
+            history.push({ filters: { ...settings }, imageData });
+            if (history.length > 50) history.shift();
+            redoHistory = []; // Clear redo history on new edit
+        }
     }
 }
 
 undoButton.addEventListener('click', () => {
-    if (history.length > 1) {
+    if (history.length > 1) { // Ensure we don't pop the last state
         const currentState = history.pop();
         redoHistory.push(currentState);
         const previousState = history[history.length - 1];
 
-        ctx.putImageData(previousState.imageData, 0, 0);
+        // Instead of directly putting imageData, redraw with previous settings
         Object.assign(settings, previousState.filters);
         document.querySelectorAll('.controls input').forEach(input => {
             input.value = settings[input.id];
         });
         updateControlIndicators();
+        redrawImage(false); // Redraw to ensure correct rendering
+    } else {
+        console.log("No more states to undo.");
     }
 });
 
@@ -1206,17 +1217,17 @@ redoButton.addEventListener('click', () => {
         const nextState = redoHistory.pop();
         history.push(nextState);
 
-        ctx.putImageData(nextState.imageData, 0, 0);
+        // Redraw with the next state's settings
         Object.assign(settings, nextState.filters);
         document.querySelectorAll('.controls input').forEach(input => {
             input.value = settings[input.id];
         });
         updateControlIndicators();
+        redrawImage(false); // Redraw to ensure correct rendering
     }
 });
 
 restoreButton.addEventListener('click', () => {
-    ctx.putImageData(originalImageData, 0, 0);
     settings = { 
         brightness: 100, 
         contrast: 100, 
@@ -1248,22 +1259,32 @@ restoreButton.addEventListener('click', () => {
         input.value = settings[input.id];
     });
     updateControlIndicators();
-    saveImageState(true);
-    redrawImage(true);
+    ctx.putImageData(originalImageData, 0, 0); // Reset to original image
+    saveImageState(true); // Reset history to initial state
+    redrawImage(false); // Redraw without saving state again
 });
 
 controls.forEach(control => {
     control.addEventListener('input', (e) => {
         const id = e.target.id;
-        settings[id] = parseInt(e.target.value);
-        updateControlIndicators();
-        if (id.startsWith('glitch-') || id.startsWith('pixel-') || id.startsWith('kaleidoscope-') || id === 'vortex-twist' || id === 'edge-detect') {
-            lastAppliedEffect = id;
+        const newValue = parseInt(e.target.value);
+        
+        if (settings[id] !== newValue) {
+            settings[id] = newValue;
+            updateControlIndicators();
+            if (id.startsWith('glitch-') || id.startsWith('pixel-') || id.startsWith('kaleidoscope-') || id === 'vortex-twist' || id === 'edge-detect') {
+                lastAppliedEffect = id;
+            }
+            saveImageState(); // Save state immediately on change
         }
     });
 
     control.addEventListener('input', debounce(() => {
-        redoHistory = []; // Clear redo history only on new edits
-        redrawImage(true);
+        if (!isRedrawing) {
+            isRedrawing = true;
+            redrawImage(false).then(() => {
+                isRedrawing = false;
+            });
+        }
     }, 300));
 });
