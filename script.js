@@ -1368,23 +1368,73 @@ restoreButton.addEventListener('click', () => {
 });
 
 controls.forEach(control => {
+    // Track start of interaction
+    control.addEventListener('mousedown', () => {
+        isDraggingSlider = true;
+        tempSettings = { ...settings }; // Snapshot current settings
+    });
+    control.addEventListener('touchstart', () => {
+        isDraggingSlider = true;
+        tempSettings = { ...settings };
+    });
+
+    // Handle input (both click and drag)
     control.addEventListener('input', (e) => {
         const id = e.target.id;
         const newValue = parseInt(e.target.value);
-        
-        if (settings[id] !== newValue) {
-            settings[id] = newValue;
-            updateControlIndicators();
-            if (id.startsWith('glitch-') || id.startsWith('pixel-') || id.startsWith('kaleidoscope-') || id === 'vortex-twist' || id === 'edge-detect') {
-                lastAppliedEffect = id;
+
+        if (isDraggingSlider) {
+            // During drag, update tempSettings only
+            tempSettings[id] = newValue;
+        } else {
+            // For clicks, update settings directly and save state
+            if (settings[id] !== newValue) {
+                settings[id] = newValue;
+                updateControlIndicators();
+                if (id.startsWith('glitch-') || id.startsWith('pixel-') || id.startsWith('kaleidoscope-') || id === 'vortex-twist' || id === 'edge-detect') {
+                    lastAppliedEffect = id;
+                }
+                saveImageState(); // Save immediately for clicks
             }
-            saveImageState(); // Save state immediately on change
+        }
+        updateControlIndicators(); // Update UI regardless
+    });
+
+    // Commit changes when drag ends
+    control.addEventListener('mouseup', () => {
+        if (isDraggingSlider) {
+            isDraggingSlider = false;
+            const id = control.id;
+            if (settings[id] !== tempSettings[id]) {
+                settings[id] = tempSettings[id]; // Commit the final value
+                if (id.startsWith('glitch-') || id.startsWith('pixel-') || id.startsWith('kaleidoscope-') || id === 'vortex-twist' || id === 'edge-detect') {
+                    lastAppliedEffect = id;
+                }
+                saveImageState(); // Save state once at the end of drag
+            }
+        }
+    });
+    control.addEventListener('touchend', () => {
+        if (isDraggingSlider) {
+            isDraggingSlider = false;
+            const id = control.id;
+            if (settings[id] !== tempSettings[id]) {
+                settings[id] = tempSettings[id];
+                if (id.startsWith('glitch-') || id.startsWith('pixel-') || id.startsWith('kaleidoscope-') || id === 'vortex-twist' || id === 'edge-detect') {
+                    lastAppliedEffect = id;
+                }
+                saveImageState();
+            }
         }
     });
 
+    // Keep the debounced redraw
     control.addEventListener('input', debounce(() => {
         if (!isRedrawing) {
             isRedrawing = true;
+            // Use tempSettings during drag, settings otherwise
+            const currentSettings = isDraggingSlider ? tempSettings : settings;
+            Object.assign(settings, currentSettings); // Sync settings for redraw
             redrawImage(false).then(() => {
                 isRedrawing = false;
             });
