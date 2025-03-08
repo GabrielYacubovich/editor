@@ -1350,37 +1350,77 @@ function saveImageState(isOriginal = false) {
     }
 }
 
-undoButton.addEventListener('click', () => {
-    if (history.length > 1) { // Ensure we don't pop the last state
+// Debounce utility (already in your code)
+function debounce(func, wait) {
+    let timeout;
+    return function (...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(this, args), wait);
+    };
+}
+
+// Function to handle undo action
+function handleUndo(e) {
+    e.preventDefault();
+    if (history.length > 1) {
         const currentState = history.pop();
         redoHistory.push(currentState);
         const previousState = history[history.length - 1];
-
-        // Instead of directly putting imageData, redraw with previous settings
         Object.assign(settings, previousState.filters);
         document.querySelectorAll('.controls input').forEach(input => {
             input.value = settings[input.id];
         });
         updateControlIndicators();
-        redrawImage(false); // Redraw to ensure correct rendering
+        redrawImage(false);
+        console.log('Undo triggered'); // For debugging
     } else {
         console.log("No more states to undo.");
     }
-});
+}
 
-redoButton.addEventListener('click', () => {
+// Function to handle redo action
+function handleRedo(e) {
+    e.preventDefault();
     if (redoHistory.length > 0) {
         const nextState = redoHistory.pop();
         history.push(nextState);
-
-        // Redraw with the next state's settings
         Object.assign(settings, nextState.filters);
         document.querySelectorAll('.controls input').forEach(input => {
             input.value = settings[input.id];
         });
         updateControlIndicators();
-        redrawImage(false); // Redraw to ensure correct rendering
+        redrawImage(false);
+        console.log('Redo triggered'); // For debugging
     }
+}
+
+// Debounced versions
+const debouncedUndo = debounce(handleUndo, 200);
+const debouncedRedo = debounce(handleRedo, 200);
+
+// Add event listeners
+undoButton.addEventListener('click', debouncedUndo);
+undoButton.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    debouncedUndo(e);
+});
+undoButton.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    debouncedUndo(e);
+});
+
+redoButton.addEventListener('click', debouncedRedo);
+redoButton.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    debouncedRedo(e);
+});
+redoButton.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    debouncedRedo(e);
 });
 
 restoreButton.addEventListener('click', () => {
