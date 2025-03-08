@@ -130,22 +130,79 @@ function showLoadingIndicator(show = true) {
     }
 }
 
-// Update redrawImage to not save state by default since we handle it on input
+function applyBasicFiltersManually(ctx, canvas, settings) {
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+    const brightnessFactor = (settings.brightness - 100) / 100 + 1; // -1 to 1 range, 100 = 1 (no change)
+    const exposureFactor = (settings.exposure - 100) / 100 + 1; // Same for exposure
+    const contrastFactor = (settings.contrast - 100) / 100 + 1; // 100 = 1 (no change)
+    const grayscale = settings.grayscale / 100; // 0 to 1
+    const saturationFactor = (settings.saturation - 100) / 100 + 1; // 100 = 1 (no change)
+    const temperatureFactor = (settings.temperature - 100) / 100; // -1 to 1 range
+
+    for (let i = 0; i < data.length; i += 4) {
+        let r = data[i];
+        let g = data[i + 1];
+        let b = data[i + 2];
+
+        // Brightness and Exposure combined
+        r *= brightnessFactor * exposureFactor;
+        g *= brightnessFactor * exposureFactor;
+        b *= brightnessFactor * exposureFactor;
+
+        // Contrast
+        r = ((r / 255 - 0.5) * contrastFactor + 0.5) * 255;
+        g = ((g / 255 - 0.5) * contrastFactor + 0.5) * 255;
+        b = ((b / 255 - 0.5) * contrastFactor + 0.5) * 255;
+
+        // Grayscale
+        if (grayscale > 0) {
+            const gray = 0.2989 * r + 0.5870 * g + 0.1140 * b;
+            r = r * (1 - grayscale) + gray * grayscale;
+            g = g * (1 - grayscale) + gray * grayscale;
+            b = b * (1 - grayscale) + gray * grayscale;
+        }
+
+        // Saturation
+        if (saturationFactor !== 1) {
+            const gray = 0.2989 * r + 0.5870 * g + 0.1140 * b;
+            r = gray + (r - gray) * saturationFactor;
+            g = gray + (g - gray) * saturationFactor;
+            b = gray + (b - gray) * saturationFactor;
+        }
+
+        // Temperature
+        if (temperatureFactor !== 0) {
+            if (temperatureFactor > 0) {
+                r += temperatureFactor * 50; // Warm: increase red
+                b -= temperatureFactor * 50; // Reduce blue
+            } else {
+                r -= Math.abs(temperatureFactor) * 50; // Cool: reduce red
+                b += Math.abs(temperatureFactor) * 50; // Increase blue
+            }
+        }
+
+        // Clamp values
+        data[i] = Math.max(0, Math.min(255, r));
+        data[i + 1] = Math.max(0, Math.min(255, g));
+        data[i + 2] = Math.max(0, Math.min(255, b));
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+}
+
 function redrawImage(saveState = false) {
     showLoadingIndicator(true);
 
     fullResCanvas.width = originalWidth;
     fullResCanvas.height = originalHeight;
     fullResCtx.clearRect(0, 0, fullResCanvas.width, fullResCanvas.height);
-
-    fullResCtx.filter = `brightness(${settings.brightness * (settings.exposure / 100)}%)
-                         contrast(${settings.contrast}%)
-                         grayscale(${settings.grayscale}%)
-                         saturate(${settings.saturation}%)
-                         sepia(${(settings.temperature - 100) / 100}%)`;
     fullResCtx.drawImage(img, 0, 0, originalWidth, originalHeight);
 
-    const scaleFactor = 1; // Full resolution for glitch effects
+    // Apply basic filters manually on the full-resolution canvas
+    applyBasicFiltersManually(fullResCtx, fullResCanvas, settings);
+
+    const scaleFactor = 1;
     return applyAdvancedFilters(fullResCtx, fullResCanvas, noiseSeed, scaleFactor)
         .then(() => applyGlitchEffects(fullResCtx, fullResCanvas, noiseSeed, scaleFactor))
         .then(() => applyComplexFilters(fullResCtx, fullResCanvas, noiseSeed, scaleFactor))
@@ -154,18 +211,15 @@ function redrawImage(saveState = false) {
             if (isShowingOriginal && originalImageData) {
                 ctx.putImageData(originalImageData, 0, 0);
             } else {
+                // Draw the processed fullResCanvas onto the preview canvas
                 ctx.imageSmoothingEnabled = true;
                 ctx.imageSmoothingQuality = 'high';
                 ctx.drawImage(fullResCanvas, 0, 0, canvas.width, canvas.height);
             }
-
             if (modal.style.display === 'block') {
                 modalImage.src = canvas.toDataURL('image/png');
             }
-
-            if (saveState) {
-                saveImageState();
-            }
+            if (saveState) saveImageState();
             showLoadingIndicator(false);
         })
         .catch(error => {
@@ -173,6 +227,8 @@ function redrawImage(saveState = false) {
             showLoadingIndicator(false);
         });
 }
+
+
 function seededRandom(seed) {
     let x = Math.sin(seed++) * 10000;
     return x - Math.floor(x);
@@ -957,7 +1013,13 @@ img.onload = function () {
     canvas.width = previewWidth;
     canvas.height = previewHeight;
 
+    // Normalize initial image data
     fullResCtx.drawImage(img, 0, 0, originalWidth, originalHeight);
+    const initialImageData = fullResCtx.getImageData(0, 0, originalWidth, originalHeight);
+    fullResCtx.putImageData(initialImageData, 0, 0); // Ensure consistent starting point
+    ctx.drawImage(fullResCanvas, 0, 0, previewWidth, previewHeight);
+
+    // Save original image data for preview canvas
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = previewWidth;
     tempCanvas.height = previewHeight;
@@ -965,10 +1027,7 @@ img.onload = function () {
     tempCtx.drawImage(img, 0, 0, previewWidth, previewHeight);
     originalImageData = tempCtx.getImageData(0, 0, previewWidth, previewHeight);
 
-    // Draw the initial image on the canvas first
-    ctx.drawImage(img, 0, 0, previewWidth, previewHeight);
-    saveImageState(true); // Save the initial state with valid imageData
-    redrawImage(false); // Redraw without saving state again
+    saveImageState(true);
 };
 
 let filterWorker;
