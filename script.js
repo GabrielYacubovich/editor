@@ -59,10 +59,35 @@ let originalWidth, originalHeight, previewWidth, previewHeight;
 let cropImage = new Image();
 let cropRect = { x: 0, y: 0, width: 0, height: 0 };
 let isDragging = false;
+let isDraggingSlider = false;
+let initialSettings = null;
 let startX, startY;
 let lockAspectRatio = false;
 let aspectRatio = 1;
 let rotation = 0;
+
+document.addEventListener('mouseup', () => {
+    if (isDraggingSlider) {
+        isDraggingSlider = false;
+        if (JSON.stringify(settings) !== JSON.stringify(initialSettings)) {
+            saveImageState();
+            redrawImage(false);
+        }
+        initialSettings = null;
+    }
+});
+
+document.addEventListener('touchend', (e) => {
+    if (isDraggingSlider) {
+        e.preventDefault();
+        isDraggingSlider = false;
+        if (JSON.stringify(settings) !== JSON.stringify(initialSettings)) {
+            saveImageState();
+            redrawImage(false);
+        }
+        initialSettings = null;
+    }
+}, { passive: false });
 
 function debounce(func, wait) {
     let timeout;
@@ -1417,26 +1442,80 @@ restoreButton.addEventListener('click', () => {
 });
 
 controls.forEach(control => {
+    // Start of drag
+    control.addEventListener('mousedown', () => {
+        if (!isDraggingSlider) {
+            isDraggingSlider = true;
+            initialSettings = { ...settings }; // Save initial state before drag
+            saveImageState(); // Save the state at the start of the drag
+        }
+    });
+
+    control.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        if (!isDraggingSlider) {
+            isDraggingSlider = true;
+            initialSettings = { ...settings };
+            saveImageState();
+        }
+    }, { passive: false });
+
+    // During drag or click
     control.addEventListener('input', (e) => {
         const id = e.target.id;
         const newValue = parseInt(e.target.value);
-        
+
         if (settings[id] !== newValue) {
             settings[id] = newValue;
             updateControlIndicators();
             if (id.startsWith('glitch-') || id.startsWith('pixel-') || id.startsWith('kaleidoscope-') || id === 'vortex-twist' || id === 'edge-detect') {
                 lastAppliedEffect = id;
             }
-            saveImageState(); // Save state immediately on change
+            // Do not save state here during drag; wait for drag end
         }
     });
 
-    control.addEventListener('input', debounce(() => {
+    // Debounced redraw during drag
+    const debouncedRedraw = debounce(() => {
         if (!isRedrawing) {
             isRedrawing = true;
             redrawImage(false).then(() => {
                 isRedrawing = false;
             });
         }
-    }, 300));
+    }, 300);
+    control.addEventListener('input', debouncedRedraw);
+
+    // End of drag
+    const handleDragEnd = () => {
+        if (isDraggingSlider) {
+            isDraggingSlider = false;
+            // Only save the final state if settings changed
+            if (JSON.stringify(settings) !== JSON.stringify(initialSettings)) {
+                saveImageState(); // Save the final state after drag
+                redrawImage(false); // Ensure final redraw
+            }
+            initialSettings = null;
+        }
+    };
+
+    control.addEventListener('mouseup', handleDragEnd);
+    control.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        handleDragEnd();
+    }, { passive: false });
+
+    // Handle single click (non-drag case)
+    control.addEventListener('change', (e) => {
+        if (!isDraggingSlider) { // Only if not dragging
+            const id = e.target.id;
+            const newValue = parseInt(e.target.value);
+            if (settings[id] !== newValue) {
+                settings[id] = newValue;
+                updateControlIndicators();
+                saveImageState(); // Save state for single click
+                redrawImage(false);
+            }
+        }
+    });
 });
