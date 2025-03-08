@@ -1298,6 +1298,33 @@ function saveImageState(isOriginal = false) {
         }
     }
 }
+// Debounced functions
+const debouncedUndo = debounce(() => {
+    if (history.length > 1) {
+        const currentState = history.pop();
+        redoHistory.push(currentState);
+        const previousState = history[history.length - 1];
+        Object.assign(settings, previousState.filters);
+        document.querySelectorAll('.controls input').forEach(input => {
+            input.value = settings[input.id];
+        });
+        updateControlIndicators();
+        redrawImage(false);
+    }
+}, 300);
+
+const debouncedRedo = debounce(() => {
+    if (redoHistory.length > 0) {
+        const nextState = redoHistory.pop();
+        history.push(nextState);
+        Object.assign(settings, nextState.filters);
+        document.querySelectorAll('.controls input').forEach(input => {
+            input.value = settings[input.id];
+        });
+        updateControlIndicators();
+        redrawImage(false);
+    }
+}, 300);
 
 undoButton.addEventListener('click', () => {
     if (history.length > 1) { // Ensure we don't pop the last state
@@ -1331,40 +1358,27 @@ redoButton.addEventListener('click', () => {
         redrawImage(false); // Redraw to ensure correct rendering
     }
 });
-// Mobile Undo Logic (same as desktop undo)
-mobileUndoButton.addEventListener('click', () => {
-    if (history.length > 1) { // Ensure we don’t pop the last state
-        const currentState = history.pop();
-        redoHistory.push(currentState);
-        const previousState = history[history.length - 1];
+// Mobile (improved)
+mobileUndoButton.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    mobileUndoButton.style.backgroundColor = '#cccccc';
+    setTimeout(() => mobileUndoButton.style.backgroundColor = '', 200);
+    debouncedUndo();
+}, { passive: false });
 
-        // Restore previous settings and redraw
-        Object.assign(settings, previousState.filters);
-        document.querySelectorAll('.controls input').forEach(input => {
-            input.value = settings[input.id];
-        });
-        updateControlIndicators();
-        redrawImage(false); // Redraw without saving state
-    } else {
-        console.log("No more states to undo.");
-    }
-});
+mobileRedoButton.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    mobileRedoButton.style.backgroundColor = '#cccccc';
+    setTimeout(() => mobileRedoButton.style.backgroundColor = '', 200);
+    debouncedRedo();
+}, { passive: false });
 
-// Mobile Redo Logic (same as desktop redo)
-mobileRedoButton.addEventListener('click', () => {
-    if (redoHistory.length > 0) {
-        const nextState = redoHistory.pop();
-        history.push(nextState);
+// Optional: Mobile click fallback
+mobileUndoButton.addEventListener('click', debouncedUndo);
+mobileRedoButton.addEventListener('click', debouncedRedo);
 
-        // Restore next settings and redraw
-        Object.assign(settings, nextState.filters);
-        document.querySelectorAll('.controls input').forEach(input => {
-            input.value = settings[input.id];
-        });
-        updateControlIndicators();
-        redrawImage(false); // Redraw without saving state
-    }
-});
 restoreButton.addEventListener('click', () => {
     settings = { 
         brightness: 100, 
