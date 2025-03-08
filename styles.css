@@ -106,6 +106,7 @@ canvas {
 }
 
 /* Action buttons */
+/* Action buttons */
 .action-buttons {
     margin-top: 20px;
     display: flex;
@@ -113,18 +114,33 @@ canvas {
     flex-wrap: wrap;
 }
 
-button {
+.action-buttons button {
     margin-top: 0;
-    padding: 10px 20px;
+    padding: 10px 20px; /* Already good, ensures 44px height with default font */
     background-color: #000;
     color: white;
     border: none;
+    border-radius: 5px;
     cursor: pointer;
     width: 100%;
     max-width: 120px;
+    min-height: 44px; /* Minimum touch target size for Safari */
     box-sizing: border-box;
-    border-radius: 5px;
+    font-size: 14px; /* Ensure readable text */
+    touch-action: manipulation; /* Reduces tap delay on mobile */
+    -webkit-tap-highlight-color: transparent; /* Removes tap highlight on iOS */
+    -webkit-user-select: none; /* Prevents text selection on iOS */
+    user-select: none;
 }
+
+.action-buttons button:hover {
+    background-color: #3a3a3a; /* Desktop hover */
+}
+
+.action-buttons button:active {
+    background-color: #555; /* Visual feedback on tap/click */
+}
+
 
 button:hover {
     background-color: #3a3a3a;
@@ -181,8 +197,12 @@ button:hover {
     .action-buttons {
         flex-direction: column;
         gap: 5px;
+        align-items: center; /* Center buttons on mobile */
     }
-
+    .action-buttons button {
+        max-width: 200px; /* Wider buttons on mobile */
+        width: 100%; /* Full width within max */
+    }    
     button {
         max-width: 200px;
     }
@@ -419,15 +439,29 @@ button:hover {
     background-color: #000;
     color: white;
     border: none;
+    border-radius: 5px;
     cursor: pointer;
+    min-height: 44px; /* Ensure touch-friendly */
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
 }
-
+#upload-new-photo:hover {
+    background-color: #3a3a3a;
+}
 #toggle-original {
     padding: 10px 20px;
     background-color: #000;
     color: white;
     border: none;
+    border-radius: 5px;
     cursor: pointer;
+    min-height: 44px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
 }
 
 #toggle-original:hover {
@@ -457,27 +491,3 @@ button:hover {
     z-index: 1003;
 }
 
-.mobile-only {
-    display: none; /* Hidden by default (desktop) */
-    padding: 10px 20px;
-    font-size: 16px;
-}
-.desktop-only {
-    display: inline-block; /* Visible by default (desktop) */
-}
-
-.mobile-only {
-    display: none; /* Hidden by default (desktop) */
-}
-
-@media only screen and (max-width: 768px) {
-    .desktop-only {
-        display: none !important; /* Hide desktop buttons on mobile */
-    }
-    .mobile-only {
-        display: inline-block; /* Show mobile buttons on mobile */
-        padding: 12px 24px; /* Larger tap targets for touch */
-        font-size: 16px;
-        touch-action: manipulation; /* Prevents double-tap zoom on mobile */
-    }
-}

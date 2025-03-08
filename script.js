@@ -1350,7 +1350,7 @@ function saveImageState(isOriginal = false) {
     }
 }
 
-// Debounce utility (already in your code)
+// Debounce utility
 function debounce(func, wait) {
     let timeout;
     return function (...args) {
@@ -1372,7 +1372,7 @@ function handleUndo(e) {
         });
         updateControlIndicators();
         redrawImage(false);
-        console.log('Undo triggered'); // For debugging
+        console.log('Undo triggered');
     } else {
         console.log("No more states to undo.");
     }
@@ -1390,7 +1390,7 @@ function handleRedo(e) {
         });
         updateControlIndicators();
         redrawImage(false);
-        console.log('Redo triggered'); // For debugging
+        console.log('Redo triggered');
     }
 }
 
@@ -1398,30 +1398,25 @@ function handleRedo(e) {
 const debouncedUndo = debounce(handleUndo, 200);
 const debouncedRedo = debounce(handleRedo, 200);
 
-// Add event listeners
-undoButton.addEventListener('click', debouncedUndo);
-undoButton.addEventListener('touchend', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    debouncedUndo(e);
-});
-undoButton.addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    debouncedUndo(e);
-});
+// Consolidated event listeners
+function addButtonListeners(button, handler) {
+    button.setAttribute('role', 'button'); // Accessibility and Safari compatibility
+    button.addEventListener('click', handler);
+    button.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        handler(e);
+    });
+    button.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        handler(e);
+    });
+    button.addEventListener('touchmove', (e) => e.preventDefault()); // Prevent scrolling/zoom
+}
 
-redoButton.addEventListener('click', debouncedRedo);
-redoButton.addEventListener('touchend', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    debouncedRedo(e);
-});
-redoButton.addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    debouncedRedo(e);
-});
+addButtonListeners(undoButton, debouncedUndo);
+addButtonListeners(redoButton, debouncedRedo);
 
 restoreButton.addEventListener('click', () => {
     settings = { 

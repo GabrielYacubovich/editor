@@ -156,13 +156,11 @@
                 </div>
 
                 <div class="action-buttons">
-                    <button id="undo" class="desktop-only">Deshacer</button>
-                    <button id="redo" class="desktop-only">Rehacer</button>
-                    <button id="mobile-undo" class="mobile-only">Undo</button>
-                    <button id="mobile-redo" class="mobile-only">Redo</button>
-                    <button id="restore">Restaurar</button>
-                    <button id="toggle-original">Ver Original</button>                
-                    <button id="download">Descargar Imagen</button>
+                    <button type="button" id="undo" aria-label="Deshacer la última acción">Deshacer</button>
+                    <button type="button" id="redo" aria-label="Rehacer la última acción deshecha">Rehacer</button>
+                    <button type="button" id="restore" aria-label="Restaurar imagen a estado original">Restaurar</button>
+                    <button type="button" id="toggle-original" aria-label="Alternar entre imagen original y editada">Ver Original</button>
+                    <button type="button" id="download" aria-label="Descargar la imagen editada">Descargar Imagen</button>
                 </div>
             </div>
         </div>
