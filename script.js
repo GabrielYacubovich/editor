@@ -14,6 +14,8 @@ const cropModal = document.getElementById('crop-modal');
 const cropCanvas = document.getElementById('crop-canvas');
 const cropCtx = cropCanvas.getContext('2d');
 const cropCloseBtn = document.querySelector('.crop-close-btn');
+const mobileUndoButton = document.getElementById('mobile-undo');
+const mobileRedoButton = document.getElementById('mobile-redo');
 
 let img = new Image();
 let originalImageData = null;
@@ -70,21 +72,65 @@ function debounce(func, wait) {
     };
 }
 
+uploadNewPhotoButton.addEventListener('click', (e) => {
+    e.preventDefault(); // Prevent any default behavior
+    triggerFileUpload();
+});uploadNewPhotoButton.addEventListener('click', (e) => {
+    e.preventDefault(); // Prevent any default behavior
+    triggerFileUpload();
+});
+
+let isTriggering = false;
+
 function triggerFileUpload() {
+    if (isTriggering) {
+        console.log("triggerFileUpload blocked due to ongoing call");
+        return;
+    }
+    isTriggering = true;
+    console.log("triggerFileUpload called");
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
     fileInput.accept = 'image/*';
+    fileInput.style.display = 'none';
+    document.body.appendChild(fileInput);
+
     fileInput.addEventListener('change', (e) => {
+        console.log("File input changed, files:", e.target.files);
         const file = e.target.files[0];
-        if (!file) return;
+        if (!file) {
+            console.log("No file selected");
+            document.body.removeChild(fileInput);
+            isTriggering = false;
+            return;
+        }
         const reader = new FileReader();
-        reader.onload = (event) => showCropModal(event.target.result);
+        reader.onload = (event) => {
+            console.log("FileReader onload, data length:", event.target.result.length);
+            showCropModal(event.target.result);
+            document.body.removeChild(fileInput);
+            isTriggering = false;
+        };
+        reader.onerror = (error) => {
+            console.error("FileReader error:", error);
+            document.body.removeChild(fileInput);
+            isTriggering = false;
+        };
         reader.readAsDataURL(file);
     });
-    fileInput.click();
+
+    setTimeout(() => {
+        console.log("File input clicked");
+        fileInput.click();
+    }, 0);
 }
 
-uploadNewPhotoButton.addEventListener('click', triggerFileUpload);
+// Ensure listener is added only once
+uploadNewPhotoButton.removeEventListener('click', triggerFileUpload); // Remove any existing listener
+uploadNewPhotoButton.addEventListener('click', (e) => {
+    e.preventDefault();
+    triggerFileUpload();
+});
 
 function updateControlIndicators() {
     const controlValues = [
@@ -1285,7 +1331,40 @@ redoButton.addEventListener('click', () => {
         redrawImage(false); // Redraw to ensure correct rendering
     }
 });
+// Mobile Undo Logic (same as desktop undo)
+mobileUndoButton.addEventListener('click', () => {
+    if (history.length > 1) { // Ensure we don’t pop the last state
+        const currentState = history.pop();
+        redoHistory.push(currentState);
+        const previousState = history[history.length - 1];
 
+        // Restore previous settings and redraw
+        Object.assign(settings, previousState.filters);
+        document.querySelectorAll('.controls input').forEach(input => {
+            input.value = settings[input.id];
+        });
+        updateControlIndicators();
+        redrawImage(false); // Redraw without saving state
+    } else {
+        console.log("No more states to undo.");
+    }
+});
+
+// Mobile Redo Logic (same as desktop redo)
+mobileRedoButton.addEventListener('click', () => {
+    if (redoHistory.length > 0) {
+        const nextState = redoHistory.pop();
+        history.push(nextState);
+
+        // Restore next settings and redraw
+        Object.assign(settings, nextState.filters);
+        document.querySelectorAll('.controls input').forEach(input => {
+            input.value = settings[input.id];
+        });
+        updateControlIndicators();
+        redrawImage(false); // Redraw without saving state
+    }
+});
 restoreButton.addEventListener('click', () => {
     settings = { 
         brightness: 100, 

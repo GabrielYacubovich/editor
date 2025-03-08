@@ -456,3 +456,28 @@ button:hover {
     border-radius: 5px;
     z-index: 1003;
 }
+
+.mobile-only {
+    display: none; /* Hidden by default (desktop) */
+    padding: 10px 20px;
+    font-size: 16px;
+}
+.desktop-only {
+    display: inline-block; /* Visible by default (desktop) */
+}
+
+.mobile-only {
+    display: none; /* Hidden by default (desktop) */
+}
+
+@media only screen and (max-width: 768px) {
+    .desktop-only {
+        display: none !important; /* Hide desktop buttons on mobile */
+    }
+    .mobile-only {
+        display: inline-block; /* Show mobile buttons on mobile */
+        padding: 12px 24px; /* Larger tap targets for touch */
+        font-size: 16px;
+        touch-action: manipulation; /* Prevents double-tap zoom on mobile */
+    }
+}
