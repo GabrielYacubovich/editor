@@ -723,24 +723,53 @@ function showCropModal(dataURL) {
         });
 
         confirmBtn.addEventListener('click', () => {
+            // Step 1: Calculate dimensions for the full rotated image
+            const originalWidth = cropImage.width;
+            const originalHeight = cropImage.height;
+            const angleRad = rotation * Math.PI / 180;
+            const cosA = Math.abs(Math.cos(angleRad));
+            const sinA = Math.abs(Math.sin(angleRad));
+            const fullRotatedWidth = Math.ceil(originalWidth * cosA + originalHeight * sinA);
+            const fullRotatedHeight = Math.ceil(originalWidth * sinA + originalHeight * cosA);
+        
+            // Step 2: Create a canvas for the full rotated image
+            const fullRotatedCanvas = document.createElement('canvas');
+            fullRotatedCanvas.width = fullRotatedWidth;
+            fullRotatedCanvas.height = fullRotatedHeight;
+            const fullRotatedCtx = fullRotatedCanvas.getContext('2d');
+        
+            // Draw the original image rotated onto fullRotatedCanvas
+            fullRotatedCtx.translate(fullRotatedWidth / 2, fullRotatedHeight / 2);
+            fullRotatedCtx.rotate(angleRad);
+            fullRotatedCtx.translate(-originalWidth / 2, -originalHeight / 2);
+            fullRotatedCtx.drawImage(cropImage, 0, 0, originalWidth, originalHeight);
+            fullRotatedCtx.setTransform(1, 0, 0, 1, 0, 0); // Reset transformation
+        
+            // Step 3: Calculate crop coordinates on the full rotated canvas
+            const scale = originalWidth / cropCanvas.width; // Uniform scaling factor
+            const cx = cropCanvas.width / 2; // Center of cropCanvas
+            const cy = cropCanvas.height / 2;
+            const fx = fullRotatedWidth / 2; // Center of fullRotatedCanvas
+            const fy = fullRotatedHeight / 2;
+            const cropX = fx + (cropRect.x - cx) * scale;
+            const cropY = fy + (cropRect.y - cy) * scale;
+            const cropWidth = cropRect.width * scale;
+            const cropHeight = cropRect.height * scale;
+        
+            // Step 4: Create tempCanvas for the cropped image
             const tempCanvas = document.createElement('canvas');
-            const scaleX = cropImage.width / cropCanvas.width;
-            const scaleY = cropImage.height / cropCanvas.height;
-            tempCanvas.width = Math.round(cropRect.width * scaleX);
-            tempCanvas.height = Math.round(cropRect.height * scaleY);
+            tempCanvas.width = cropWidth;
+            tempCanvas.height = cropHeight;
             const tempCtx = tempCanvas.getContext('2d');
-
-            tempCtx.save();
-            tempCtx.translate(tempCanvas.width / 2, tempCanvas.height / 2);
-            tempCtx.rotate(rotation * Math.PI / 180);
-            tempCtx.translate(-tempCanvas.width / 2, -tempCanvas.height / 2);
+        
+            // Draw the cropped area from fullRotatedCanvas onto tempCanvas
             tempCtx.drawImage(
-                cropImage,
-                cropRect.x * scaleX, cropRect.y * scaleY, cropRect.width * scaleX, cropRect.height * scaleY,
-                0, 0, tempCanvas.width, tempCanvas.height
+                fullRotatedCanvas,
+                cropX, cropY, cropWidth, cropHeight,
+                0, 0, cropWidth, cropHeight
             );
-            tempCtx.restore();
-
+        
+            // Step 5: Set the cropped image as the new source
             img.src = tempCanvas.toDataURL('image/png');
             closeCropModal();
             uploadNewPhotoButton.style.display = 'block';
