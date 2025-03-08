@@ -1199,7 +1199,7 @@ downloadButton.addEventListener('click', () => {
     popup.style.border = '1px solid #ccc';
     popup.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
     popup.style.zIndex = '1002';
-    popup.style.width = '300px';
+    popup.style.width = '350px';
     popup.innerHTML = `
         <h3>Guardar Imagen</h3>
         <label>Nombre del archivo:</label><br>
@@ -1210,8 +1210,18 @@ downloadButton.addEventListener('click', () => {
             <option value="image/jpeg">JPEG</option>
             <option value="image/webp">WebP</option>
         </select><br>
-        <label>Escala de resolución (%):</label><br>
-        <input type="number" id="save-resolution-scale" value="100" min="25" max="400" style="width: 100%; margin-bottom: 15px; padding: 5px; box-sizing: border-box;"><br>
+        <label>Calidad de resolución:</label><br>
+        <select id="save-resolution-scale" style="width: 100%; margin-bottom: 10px; padding: 5px;">
+            <option value="20">Lowest (20%)</option>
+            <option value="40">Low (40%)</option>
+            <option value="60">Medium (60%)</option>
+            <option value="80">High (80%)</option>
+            <option value="100" selected>Full (100%)</option>
+        </select><br>
+        <div id="file-info" style="margin-bottom: 15px;">
+            <p>Dimensiones: <span id="dimensions"></span> px</p>
+            <p>Tamaño estimado: <span id="file-size"></span> KB</p>
+        </div>
         <div style="display: flex; justify-content: space-between; gap: 10px;">
             <button id="save-confirm" style="background-color: #4CAF50; color: white; padding: 10px 20px; border: none; cursor: pointer; flex: 1;">Guardar</button>
             <button id="save-cancel" style="background-color: #f44336; color: white; padding: 10px 20px; border: none; cursor: pointer; flex: 1;">Cancelar</button>
@@ -1229,10 +1239,49 @@ downloadButton.addEventListener('click', () => {
     overlay.style.zIndex = '1001';
     document.body.appendChild(overlay);
 
+    const resolutionSelect = document.getElementById('save-resolution-scale');
+    const fileTypeSelect = document.getElementById('save-file-type');
+    const dimensionsSpan = document.getElementById('dimensions');
+    const fileSizeSpan = document.getElementById('file-size');
+
+    function updateFileInfo() {
+        const scale = parseFloat(resolutionSelect.value) / 100;
+        const width = Math.round(originalWidth * scale);
+        const height = Math.round(originalHeight * scale);
+        dimensionsSpan.textContent = `${width} x ${height}`;
+
+        // Create a temporary canvas to estimate file size
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = width;
+        tempCanvas.height = height;
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCtx.imageSmoothingEnabled = true;
+        tempCtx.imageSmoothingQuality = 'high';
+        tempCtx.drawImage(fullResCanvas, 0, 0, width, height);
+
+        const fileType = fileTypeSelect.value;
+        const quality = fileType === 'image/png' ? 1.0 : 0.9; // PNG doesn't use quality parameter
+        tempCanvas.toBlob((blob) => {
+            if (blob) {
+                const sizeKB = Math.round(blob.size / 1024);
+                fileSizeSpan.textContent = `${sizeKB}`;
+            } else {
+                fileSizeSpan.textContent = 'Calculando...';
+            }
+        }, fileType, quality);
+    }
+
+    // Initial update
+    updateFileInfo();
+
+    // Update file info when resolution or format changes
+    resolutionSelect.addEventListener('change', updateFileInfo);
+    fileTypeSelect.addEventListener('change', updateFileInfo);
+
     document.getElementById('save-confirm').addEventListener('click', () => {
         const fileName = document.getElementById('save-file-name').value.trim() || 'nueva imagen';
-        const fileType = document.getElementById('save-file-type').value;
-        const scale = parseFloat(document.getElementById('save-resolution-scale').value) / 100;
+        const fileType = fileTypeSelect.value;
+        const scale = parseFloat(resolutionSelect.value) / 100;
 
         const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9-_]/g, '');
         const tempCanvas = document.createElement('canvas');
