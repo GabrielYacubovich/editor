@@ -1280,6 +1280,59 @@ downloadButton.addEventListener('click', () => {
 });
 
 let isRedrawing = false;
+// Function to handle undo action
+function handleUndo() {
+    if (history.length > 1) { // Ensure we don't pop the last state
+        const currentState = history.pop();
+        redoHistory.push(currentState);
+        const previousState = history[history.length - 1];
+
+        // Redraw with previous settings
+        Object.assign(settings, previousState.filters);
+        document.querySelectorAll('.controls input').forEach(input => {
+            input.value = settings[input.id];
+        });
+        updateControlIndicators();
+        redrawImage(false); // Redraw to ensure correct rendering
+    } else {
+        console.log("No more states to undo.");
+    }
+}
+
+// Function to handle redo action
+function handleRedo() {
+    if (redoHistory.length > 0) {
+        const nextState = redoHistory.pop();
+        history.push(nextState);
+
+        // Redraw with the next state's settings
+        Object.assign(settings, nextState.filters);
+        document.querySelectorAll('.controls input').forEach(input => {
+            input.value = settings[input.id];
+        });
+        updateControlIndicators();
+        redrawImage(false); // Redraw to ensure correct rendering
+    }
+}
+
+// Add event listeners for both click and touchend
+undoButton.addEventListener('click', (e) => {
+    e.preventDefault(); // Prevent any default behavior
+    handleUndo();
+});
+undoButton.addEventListener('touchend', (e) => {
+    e.preventDefault(); // Prevent default touch behavior (e.g., scrolling)
+    handleUndo();
+});
+
+redoButton.addEventListener('click', (e) => {
+    e.preventDefault(); // Prevent any default behavior
+    handleRedo();
+});
+redoButton.addEventListener('touchend', (e) => {
+    e.preventDefault(); // Prevent default touch behavior
+    handleRedo();
+});
 
 function saveImageState(isOriginal = false) {
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
