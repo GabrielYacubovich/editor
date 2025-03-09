@@ -178,16 +178,24 @@
     </div>
 
     <!-- Cropping Modal -->
-    <div id="crop-modal" class="modal">
-        <div class="modal-content">
-            <span class="crop-close-btn">×</span>
-            <div class="crop-modal-inner">
-                <canvas id="crop-canvas"></canvas>
-                <div id="crop-controls"></div>
-            </div>
+    <div id="crop-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000;">
+        <div style="position:relative; background:white; margin:50px auto; padding:20px; max-width:90%; max-height:90vh; overflow:auto; width:fit-content; text-align:center;">
+            <span class="crop-close-btn" style="position:absolute; top:10px; right:10px; font-size:20px; cursor:pointer;">×</span>
+            <canvas id="crop-canvas" style="display:block; margin:0 auto;"></canvas>
+            <div id="crop-controls" style="margin-top:10px;"></div>
         </div>
     </div>
+        <!-- Cropping Preview Modal -->
 
+        <div id="preview-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1001;">
+            <div class="modal-content" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:#e0e0e0; padding:20px; border-radius:5px; max-width:90vw; max-height:90vh; display:flex; justify-content:center; align-items:center;">
+                <span class="close" style="position:absolute; top:10px; right:10px; font-size:20px; cursor:pointer;" onclick="document.getElementById('preview-modal').style.display='none'">×</span>
+                <div class="image-container" style="position:relative; display:inline-block; text-align:center;">
+                    <img id="preview-image" src="" alt="Preview" style="max-width:600px; max-height:600px; display:block; border:2px solid #333;">
+                    <p id="preview-dimensions" style="margin:5px 0 0; font-size:14px; color:#333;"></p>
+                </div>
+            </div>
+        </div>
     <script src="script.js"></script>
 </body>
 </html>

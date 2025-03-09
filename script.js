@@ -707,32 +707,98 @@ function showCropModal(dataURL) {
         const buttonGroup = document.createElement('div');
         buttonGroup.className = 'crop-button-group';
         buttonGroup.innerHTML = `
-            <button id="crop-select-all">Seleccionar todo</button>
+            <button id="crop-restore">Restaurar</button>
+            <button id="crop-preview">Preview</button>
             <button id="crop-confirm">Confirmar</button>
             <button id="crop-skip">Omitir</button>
         `;
         cropControls.appendChild(buttonGroup);
 
-        const selectAllBtn = document.getElementById('crop-select-all');
+        const restoreBtn = document.getElementById('crop-restore');
+        const previewBtn = document.getElementById('crop-preview');
         const confirmBtn = document.getElementById('crop-confirm');
         const skipBtn = document.getElementById('crop-skip');
 
-        selectAllBtn.addEventListener('click', () => {
+        restoreBtn.addEventListener('click', () => {
+            rotation = 0;
             cropRect = { x: 0, y: 0, width: cropCanvas.width, height: cropCanvas.height };
+            rotationInput.value = 0;
+            rotationValue.textContent = '0°';
             drawCropOverlay();
         });
 
-        confirmBtn.addEventListener('click', () => {
-            // Step 1: Calculate dimensions for the full rotated image
+        previewBtn.addEventListener('click', () => {
+            // Calculate dimensions for the full rotated image
             const originalWidth = cropImage.width;
             const originalHeight = cropImage.height;
+            const displayWidth = cropCanvas.width;
+            const displayHeight = cropCanvas.height;
+            const displayScale = displayWidth / originalWidth;
+            const angleRad = rotation * Math.PI / 180;
+            const cosA = Math.abs(Math.cos(angleRad));
+            const sinA = Math.abs(Math.sin(angleRad));
+            const fullRotatedWidth = Math.ceil(originalWidth * cosA + originalHeight * sinA);
+            const fullRotatedHeight = Math.ceil(originalWidth * sinA + originalHeight * cosA);
+
+            // Create a canvas for the full rotated image
+            const fullRotatedCanvas = document.createElement('canvas');
+            fullRotatedCanvas.width = fullRotatedWidth;
+            fullRotatedCanvas.height = fullRotatedHeight;
+            const fullRotatedCtx = fullRotatedCanvas.getContext('2d');
+
+            // Draw the original image rotated onto fullRotatedCanvas
+            fullRotatedCtx.translate(fullRotatedWidth / 2, fullRotatedHeight / 2);
+            fullRotatedCtx.rotate(angleRad);
+            fullRotatedCtx.translate(-originalWidth / 2, -originalHeight / 2);
+            fullRotatedCtx.drawImage(cropImage, 0, 0, originalWidth, originalHeight);
+            fullRotatedCtx.setTransform(1, 0, 0, 1, 0, 0); // Reset transformation
+
+            // Calculate fitScale (same as in drawCropOverlay)
+            const fitScale = Math.min(
+                originalWidth / (originalWidth * cosA + originalHeight * sinA),
+                originalHeight / (originalWidth * sinA + originalHeight * cosA)
+            );
+
+            // Map crop coordinates from canvas to fullRotatedCanvas
+            const cropX = (cropRect.x - displayWidth / 2) / (fitScale * displayScale) + fullRotatedWidth / 2;
+            const cropY = (cropRect.y - displayHeight / 2) / (fitScale * displayScale) + fullRotatedHeight / 2;
+            const cropWidth = cropRect.width / (fitScale * displayScale);
+            const cropHeight = cropRect.height / (fitScale * displayScale);
+
+            // Create tempCanvas for the cropped image
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = cropWidth;
+            tempCanvas.height = cropHeight;
+            const tempCtx = tempCanvas.getContext('2d');
+
+            // Draw the cropped area from fullRotatedCanvas onto tempCanvas
+            tempCtx.drawImage(
+                fullRotatedCanvas,
+                cropX, cropY, cropWidth, cropHeight,
+                0, 0, cropWidth, cropHeight
+            );
+
+            // Display the preview in the modal
+            const previewModal = document.getElementById('preview-modal');
+            const previewImage = document.getElementById('preview-image');
+            previewImage.src = tempCanvas.toDataURL('image/png');
+            previewModal.style.display = 'block';
+        });
+
+        confirmBtn.addEventListener('click', () => {
+            // Calculate dimensions for the full rotated image
+            const originalWidth = cropImage.width;
+            const originalHeight = cropImage.height;
+            const displayWidth = cropCanvas.width;
+            const displayHeight = cropCanvas.height;
+            const displayScale = displayWidth / originalWidth;
             const angleRad = rotation * Math.PI / 180;
             const cosA = Math.abs(Math.cos(angleRad));
             const sinA = Math.abs(Math.sin(angleRad));
             const fullRotatedWidth = Math.ceil(originalWidth * cosA + originalHeight * sinA);
             const fullRotatedHeight = Math.ceil(originalWidth * sinA + originalHeight * cosA);
         
-            // Step 2: Create a canvas for the full rotated image
+            // Create a canvas for the full rotated image
             const fullRotatedCanvas = document.createElement('canvas');
             fullRotatedCanvas.width = fullRotatedWidth;
             fullRotatedCanvas.height = fullRotatedHeight;
@@ -743,36 +809,36 @@ function showCropModal(dataURL) {
             fullRotatedCtx.rotate(angleRad);
             fullRotatedCtx.translate(-originalWidth / 2, -originalHeight / 2);
             fullRotatedCtx.drawImage(cropImage, 0, 0, originalWidth, originalHeight);
-            fullRotatedCtx.setTransform(1, 0, 0, 1, 0, 0); // Reset transformation
+            fullRotatedCtx.setTransform(1, 0, 0, 1, 0, 0);
         
-            // Step 3: Calculate crop coordinates on the full rotated canvas
-            const scale = originalWidth / cropCanvas.width; // Uniform scaling factor
-            const cx = cropCanvas.width / 2; // Center of cropCanvas
-            const cy = cropCanvas.height / 2;
-            const fx = fullRotatedWidth / 2; // Center of fullRotatedCanvas
-            const fy = fullRotatedHeight / 2;
-            const cropX = fx + (cropRect.x - cx) * scale;
-            const cropY = fy + (cropRect.y - cy) * scale;
-            const cropWidth = cropRect.width * scale;
-            const cropHeight = cropRect.height * scale;
+            // Calculate fitScale
+            const fitScale = Math.min(
+                originalWidth / (originalWidth * cosA + originalHeight * sinA),
+                originalHeight / (originalWidth * sinA + originalHeight * cosA)
+            );
         
-            // Step 4: Create tempCanvas for the cropped image
+            // Map crop coordinates
+            const cropX = (cropRect.x - displayWidth / 2) / (fitScale * displayScale) + fullRotatedWidth / 2;
+            const cropY = (cropRect.y - displayHeight / 2) / (fitScale * displayScale) + fullRotatedHeight / 2;
+            const cropWidth = cropRect.width / (fitScale * displayScale);
+            const cropHeight = cropRect.height / (fitScale * displayScale);
+        
+            // Create tempCanvas for the cropped image
             const tempCanvas = document.createElement('canvas');
             tempCanvas.width = cropWidth;
             tempCanvas.height = cropHeight;
             const tempCtx = tempCanvas.getContext('2d');
         
-            // Draw the cropped area from fullRotatedCanvas onto tempCanvas
+            // Draw the cropped area
             tempCtx.drawImage(
                 fullRotatedCanvas,
                 cropX, cropY, cropWidth, cropHeight,
                 0, 0, cropWidth, cropHeight
             );
         
-            // Step 5: Set the cropped image as the new source
+            // Set the cropped image as the new source and trigger global onload
             img.src = tempCanvas.toDataURL('image/png');
             closeCropModal();
-            uploadNewPhotoButton.style.display = 'block';
         });
 
         skipBtn.addEventListener('click', () => {
@@ -799,29 +865,54 @@ function showCropModal(dataURL) {
     };
 }
 
+
+
 function drawCropOverlay() {
     cropCtx.clearRect(0, 0, cropCanvas.width, cropCanvas.height);
+
+    // Calculate fitScale to ensure the rotated image fits within the canvas
+    const originalWidth = cropImage.width;
+    const originalHeight = cropImage.height;
+    const displayWidth = cropCanvas.width;
+    const displayHeight = cropCanvas.height;
+    const displayScale = displayWidth / originalWidth;
+    const angleRad = rotation * Math.PI / 180;
+    const cosA = Math.abs(Math.cos(angleRad));
+    const sinA = Math.abs(Math.sin(angleRad));
+    const fitScale = Math.min(
+        originalWidth / (originalWidth * cosA + originalHeight * sinA),
+        originalHeight / (originalWidth * sinA + originalHeight * cosA)
+    );
+
+    // Step 1: Draw the blurred rotated image across the entire canvas
     cropCtx.save();
-    cropCtx.translate(cropCanvas.width / 2, cropCanvas.height / 2);
-    cropCtx.rotate(rotation * Math.PI / 180);
-    cropCtx.translate(-cropCanvas.width / 2, -cropCanvas.height / 2);
-    cropCtx.drawImage(cropImage, 0, 0, cropCanvas.width, cropCanvas.height);
-
+    cropCtx.translate(displayWidth / 2, displayHeight / 2);
+    cropCtx.rotate(angleRad);
+    cropCtx.scale(fitScale * displayScale, fitScale * displayScale);
+    cropCtx.translate(-originalWidth / 2, -originalHeight / 2);
     cropCtx.filter = 'blur(5px)';
-    cropCtx.drawImage(cropImage, 0, 0, cropCanvas.width, cropCanvas.height);
-    cropCtx.filter = 'none';
+    cropCtx.drawImage(cropImage, 0, 0, originalWidth, originalHeight);
+    cropCtx.restore();
 
+    // Step 2: Set the clip to the crop rectangle in canvas coordinates
+    cropCtx.save();
     cropCtx.beginPath();
     cropCtx.rect(cropRect.x, cropRect.y, cropRect.width, cropRect.height);
     cropCtx.clip();
-    cropCtx.drawImage(cropImage, 0, 0, cropCanvas.width, cropCanvas.height);
+
+    // Step 3: Draw the clear rotated image inside the clip with the same transformation
+    cropCtx.translate(displayWidth / 2, displayHeight / 2);
+    cropCtx.rotate(angleRad);
+    cropCtx.scale(fitScale * displayScale, fitScale * displayScale);
+    cropCtx.translate(-originalWidth / 2, -originalHeight / 2);
+    cropCtx.drawImage(cropImage, 0, 0, originalWidth, originalHeight);
     cropCtx.restore();
 
+    // Step 4: Stroke the green rectangle
     cropCtx.strokeStyle = '#00ff00';
     cropCtx.lineWidth = 2;
     cropCtx.strokeRect(cropRect.x, cropRect.y, cropRect.width, cropRect.height);
 }
-
 cropCanvas.addEventListener('mousedown', startCropDrag);
 cropCanvas.addEventListener('mousemove', adjustCropDrag);
 cropCanvas.addEventListener('mouseup', stopCropDrag);
@@ -1053,6 +1144,7 @@ img.onload = function () {
 
     fullResCanvas.width = originalWidth;
     fullResCanvas.height = originalHeight;
+    fullResCtx.drawImage(img, 0, 0, originalWidth, originalHeight);
 
     const maxDisplayWidth = Math.min(1920, window.innerWidth - 100);
     const maxDisplayHeight = Math.min(1080, window.innerHeight - 250);
@@ -1089,7 +1181,7 @@ img.onload = function () {
     // Normalize initial image data
     fullResCtx.drawImage(img, 0, 0, originalWidth, originalHeight);
     const initialImageData = fullResCtx.getImageData(0, 0, originalWidth, originalHeight);
-    fullResCtx.putImageData(initialImageData, 0, 0); // Ensure consistent starting point
+    fullResCtx.putImageData(initialImageData, 0, 0);
     ctx.drawImage(fullResCanvas, 0, 0, previewWidth, previewHeight);
 
     // Save original image data for preview canvas
@@ -1100,8 +1192,10 @@ img.onload = function () {
     tempCtx.drawImage(img, 0, 0, previewWidth, previewHeight);
     originalImageData = tempCtx.getImageData(0, 0, previewWidth, previewHeight);
 
-    saveImageState(true);
+    redrawImage(true); // Save state and redraw
+    uploadNewPhotoButton.style.display = 'block';
 };
+
 
 let filterWorker;
 if (window.Worker) {

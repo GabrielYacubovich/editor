@@ -491,3 +491,15 @@ button:hover {
     z-index: 1003;
 }
 
+#preview-image {
+    max-width:80vw;
+    max-height:80vh;
+    display:block;
+    border:2px solid #333;
+}
+
+#preview-image:hover {
+    max-width:800px;
+    max-height:800px;
+    transition: max-width 0.3s, max-height 0.3s;
+}
