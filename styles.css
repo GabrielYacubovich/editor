@@ -1,10 +1,10 @@
-
 /* Container for the entire layout */
 .editor {
     display: flex;
     justify-content: center;
     align-items: flex-start;
     height: 100vh;
+    padding: 10px; /* Added padding for better edge spacing */
 }
 
 /* Container for image and controls */
@@ -13,6 +13,7 @@
     justify-content: space-between;
     width: 100%;
     max-width: 1200px;
+    gap: 20px; /* Controlled gap between image and controls */
 }
 
 /* Image container */
@@ -20,8 +21,8 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: 80%;
-    padding-right: 50px;
+    width: 70%; /* Reduced from 80% */
+    padding-right: 20px; /* Reduced from 50px */
 }
 
 /* Canvas styling */
@@ -30,7 +31,7 @@
     max-width: 1920px;
     width: 100%;
     height: auto;
-    margin: 0px auto;
+    margin: 0 auto;
     cursor: pointer;
     display: block;
 }
@@ -41,7 +42,8 @@
     flex-direction: column;
     justify-content: flex-start;
     align-items: flex-start;
-    width: 40%;
+    width: 30%; /* Adjusted from 40% */
+    min-width: 250px; /* Ensures controls don’t collapse too much */
 }
 
 /* Controls (sliders and labels) */
@@ -49,6 +51,7 @@
     display: flex;
     flex-direction: column;
     width: 100%;
+    padding: 10px; /* Added padding */
 }
 
 /* Each control (slider + label + value) */
@@ -56,59 +59,59 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 8px;
+    margin-bottom: 5px; /* Reduced from 8px */
     width: 100%;
 }
 
 .controls label {
-    flex: 0 0 100px;
-    margin-right: 10px;
-    font-size: 14px;
+    flex: 0 0 90px; /* Reduced from 100px */
+    margin-right: 5px; /* Reduced from 10px */
+    font-size: 13px; /* Slightly smaller */
 }
 
 .controls input[type="range"] {
     flex: 1;
-    max-width: 150px;
-    margin: 0 10px;
+    max-width: 140px; /* Reduced from 150px */
+    margin: 0 5px; /* Reduced from 10px */
 }
 
 .controls span {
-    flex: 0 0 40px;
-    font-size: 14px;
+    flex: 0 0 35px; /* Reduced from 40px */
+    font-size: 13px; /* Smaller font */
     font-weight: bold;
     text-align: right;
 }
 
 /* Complex Filters Header */
 .controls h3 {
-    margin: 20px 0 10px;
-    font-size: 16px;
+    margin: 15px 0 5px; /* Reduced from 20px 0 10px */
+    font-size: 15px; /* Reduced from 16px */
     font-weight: bold;
     color: #333;
 }
 
 /* Action buttons */
 .action-buttons {
-    margin-top: 20px;
+    margin-top: 10px; /* Reduced from 20px */
     display: flex;
-    gap: 10px;
+    gap: 5px; /* Reduced from 10px */
     flex-wrap: wrap;
 }
 
 .action-buttons button,
 #upload-new-photo,
 #toggle-original {
-    padding: 10px 20px;
+    padding: 8px 15px; /* Reduced from 10px 20px */
     background-color: #000;
     color: white;
     border: none;
     border-radius: 5px;
     cursor: pointer;
     width: 100%;
-    max-width: 120px;
-    min-height: 44px;
+    max-width: 100px; /* Reduced from 120px */
+    min-height: 40px; /* Reduced from 44px */
     box-sizing: border-box;
-    font-size: 14px;
+    font-size: 13px; /* Reduced from 14px */
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
     -webkit-user-select: none;
@@ -144,10 +147,10 @@
     margin: 2% auto;
     width: 95%;
     max-width: 1200px;
-    padding: 20px;
+    padding: 15px; /* Reduced from 20px */
     background-color: #fff;
     box-sizing: border-box;
-    border-radius: 10px;
+    border-radius: 8px; /* Reduced from 10px */
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
     max-height: 90vh;
     overflow-y: auto;
@@ -172,7 +175,7 @@
     flex-direction: row;
     justify-content: space-between;
     align-items: flex-start;
-    gap: 20px;
+    gap: 15px; /* Reduced from 20px */
 }
 
 #modal-image {
@@ -201,7 +204,7 @@
 #crop-controls {
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 10px; /* Reduced from 15px */
     width: 100%;
     max-width: 400px;
     padding: 10px;
@@ -238,12 +241,12 @@
 .crop-button-group {
     display: flex;
     justify-content: space-between;
-    gap: 10px;
+    gap: 5px; /* Reduced from 10px */
 }
 
 .crop-button-group button {
     flex: 1;
-    padding: 10px;
+    padding: 8px; /* Reduced from 10px */
     background-color: #000;
     color: white;
     border: none;
@@ -343,61 +346,87 @@
 
 /* Responsive Design */
 @media (max-width: 768px) {
+    .editor {
+        padding: 5px; /* Reduced padding on mobile */
+    }
+
     #content {
         flex-direction: column;
         align-items: center;
+        gap: 10px; /* Reduced from implied larger spacing */
     }
 
     #image-container {
         width: 100%;
         padding-right: 0;
-        margin-bottom: 20px;
+        margin-bottom: 10px; /* Reduced from 20px */
     }
 
     #controls-container {
         width: 100%;
+        min-width: unset; /* Remove min-width on mobile */
+    }
+
+    .controls {
+        padding: 5px; /* Reduced from 10px */
     }
 
     .controls div {
-        flex-direction: column;
-        align-items: flex-start;
+        flex-direction: row; /* Changed to row for better mobile UX */
+        align-items: center;
+        margin-bottom: 4px; /* Reduced from 5px */
     }
 
     .controls label {
-        margin-bottom: 5px;
+        flex: 0 0 80px; /* Reduced from 90px */
+        margin-right: 5px;
+        margin-bottom: 0; /* Reset from column layout */
+        font-size: 12px; /* Smaller font */
     }
 
     .controls input[type="range"] {
         max-width: 100%;
-        margin: 0;
+        margin: 0 5px;
     }
 
     .controls span {
-        margin-top: 5px;
+        flex: 0 0 30px; /* Reduced from 35px */
+        margin-top: 0; /* Reset from column layout */
+        font-size: 12px; /* Smaller font */
+    }
+
+    .controls h3 {
+        margin: 10px 0 5px; /* Reduced spacing */
+        font-size: 14px; /* Reduced from 15px */
     }
 
     .action-buttons {
-        flex-direction: column;
+        margin-top: 5px; /* Reduced from 10px */
+        flex-direction: row; /* Keep row with wrapping */
         gap: 5px;
-        align-items: center;
+        justify-content: center;
     }
 
     .action-buttons button,
     #upload-new-photo,
     #toggle-original {
-        max-width: 200px;
-        width: 100%;
+        max-width: 90px; /* Reduced from 200px */
+        padding: 6px 10px; /* Reduced from 8px 15px */
+        font-size: 12px; /* Reduced from 13px */
+        min-height: 36px; /* Reduced from 40px */
     }
 
     /* Modal Responsiveness */
     .modal-content {
         width: 90%;
         margin: 5% auto;
+        padding: 10px; /* Reduced from 15px */
     }
 
     #image-modal .modal-inner {
         flex-direction: column;
         align-items: center;
+        gap: 10px; /* Reduced from 15px */
     }
 
     #modal-image {
@@ -406,7 +435,7 @@
 
     #modal-controls {
         width: 100%;
-        padding: 0;
+        padding: 5px; /* Reduced from 10px */
     }
 
     #crop-canvas {
@@ -416,33 +445,39 @@
 
     #crop-controls {
         max-width: 100%;
-        padding: 5px;
+        padding: 5px; /* Reduced from 10px */
+        gap: 5px; /* Reduced from 10px */
     }
 
     .crop-control-group {
-        flex-direction: column;
-        align-items: flex-start;
+        flex-direction: row; /* Changed to row for consistency */
+        align-items: center;
     }
 
     .crop-control-group label {
-        margin-bottom: 5px;
+        flex: 0 0 70px; /* Reduced from 80px */
+        margin-bottom: 0; /* Reset from column layout */
+        font-size: 12px; /* Smaller font */
     }
 
     .crop-control-group input[type="range"] {
         width: 100%;
-        margin: 0;
+        margin: 0 5px; /* Adjusted */
     }
 
     .crop-control-group span {
-        margin-top: 5px;
+        flex: 0 0 35px; /* Reduced from 40px */
+        margin-top: 0; /* Reset from column layout */
+        font-size: 12px; /* Smaller font */
     }
 
     .crop-button-group {
-        flex-direction: column;
+        flex-direction: row; /* Keep row with wrapping */
         gap: 5px;
     }
 
     .crop-button-group button {
+        padding: 6px; /* Reduced from 8px */
         width: 100%;
     }
 
