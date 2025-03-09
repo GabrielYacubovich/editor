@@ -1,3 +1,4 @@
+
 /* Container for the entire layout */
 .editor {
     display: flex;
@@ -48,7 +49,6 @@
     display: flex;
     flex-direction: column;
     width: 100%;
-    margin-top: 20px;
 }
 
 /* Each control (slider + label + value) */
