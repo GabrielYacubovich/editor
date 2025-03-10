@@ -1168,6 +1168,10 @@ function applyAdvancedFilters(ctx, canvas, noiseSeed, scaleFactor) {
 
 downloadButton.addEventListener('click', () => {
     console.log("Download button clicked");
+
+    // Check if any edits have been applied
+    const isEdited = Object.values(settings).some(value => value !== 100 && value !== 0);
+
     const popup = document.createElement('div');
     popup.style.position = 'fixed';
     popup.style.top = '50%';
@@ -1191,7 +1195,8 @@ downloadButton.addEventListener('click', () => {
         </select><br>
         <label>Calidad de resolución:</label><br>
         <select id="save-resolution-scale" style="width: 100%; margin-bottom: 10px; padding: 5px;">
-            <option value="20">Lowest (20%)</option>
+            <option value="10">Lowest (10%)</option>
+            <option value="20">Very Low (20%)</option>
             <option value="40">Low (40%)</option>
             <option value="60">Medium (60%)</option>
             <option value="80">High (80%)</option>
@@ -1216,16 +1221,22 @@ downloadButton.addEventListener('click', () => {
     overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
     overlay.style.zIndex = '1001';
     document.body.appendChild(overlay);
+
     const resolutionSelect = document.getElementById('save-resolution-scale');
     const fileTypeSelect = document.getElementById('save-file-type');
     const dimensionsSpan = document.getElementById('dimensions');
     const fileSizeSpan = document.getElementById('file-size');
+
+    // Store the original image data URL for unedited downloads
+    const originalDataURL = img.src;
+
     function updateFileInfo() {
         const scale = parseFloat(resolutionSelect.value) / 100;
         const width = Math.round(originalWidth * scale);
         const height = Math.round(originalHeight * scale);
         dimensionsSpan.textContent = `${width} x ${height}`;
         console.log(`Updating file info: ${width}x${height}`);
+
         const tempCanvas = document.createElement('canvas');
         tempCanvas.width = width;
         tempCanvas.height = height;
@@ -1233,8 +1244,9 @@ downloadButton.addEventListener('click', () => {
         tempCtx.imageSmoothingEnabled = true;
         tempCtx.imageSmoothingQuality = 'high';
         tempCtx.drawImage(fullResCanvas, 0, 0, width, height);
+
         const fileType = fileTypeSelect.value;
-        const quality = fileType === 'image/png' ? 1.0 : 0.9;
+        const quality = fileType === 'image/png' ? undefined : 1.0; // PNG doesn't use quality; JPEG/WebP atClicked max quality
         tempCanvas.toBlob((blob) => {
             if (blob) {
                 const sizeKB = Math.round(blob.size / 1024);
@@ -1246,37 +1258,58 @@ downloadButton.addEventListener('click', () => {
             }
         }, fileType, quality);
     }
+
     updateFileInfo();
     resolutionSelect.addEventListener('change', updateFileInfo);
     fileTypeSelect.addEventListener('change', updateFileInfo);
+
     document.getElementById('save-confirm').addEventListener('click', () => {
         console.log("Save confirm clicked");
         const fileName = document.getElementById('save-file-name').value.trim() || 'nueva-imagen';
         const fileType = fileTypeSelect.value;
         const scale = parseFloat(resolutionSelect.value) / 100;
         const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9-_]/g, '');
+        const extension = fileType.split('/')[1];
+
+        showLoadingIndicator(true);
+
+        if (!isEdited && scale === 1.0) {
+            // If no edits and full resolution, download the original file directly
+            console.log("Downloading original unedited image");
+            const link = document.createElement('a');
+            link.download = `${sanitizedFileName}.${extension}`;
+            link.href = originalDataURL;
+            link.click();
+            showLoadingIndicator(false);
+            document.body.removeChild(popup);
+            document.body.removeChild(overlay);
+            return;
+        }
+
+        // Process the image through the canvas
         const tempCanvas = document.createElement('canvas');
         tempCanvas.width = Math.round(originalWidth * scale);
         tempCanvas.height = Math.round(originalHeight * scale);
         const tempCtx = tempCanvas.getContext('2d');
         tempCtx.imageSmoothingEnabled = true;
         tempCtx.imageSmoothingQuality = 'high';
-        showLoadingIndicator(true);
+
         redrawImage(false).then(() => {
             console.log("Image redrawn for download");
             tempCtx.drawImage(fullResCanvas, 0, 0, tempCanvas.width, tempCanvas.height);
-            const quality = fileType === 'image/png' ? 1.0 : 0.9;
-            const dataURL = tempCanvas.toDataURL(fileType, quality);
-            console.log(`Generated data URL length: ${dataURL.length}`);
-            const link = document.createElement('a');
-            const extension = fileType.split('/')[1];
-            link.download = `${sanitizedFileName}-${Math.round(scale * 100)}%.${extension}`;
-            link.href = dataURL;
-            console.log(`Download link: ${link.download}`);
-            link.click();
-            showLoadingIndicator(false);
-            document.body.removeChild(popup);
-            document.body.removeChild(overlay);
+
+            const quality = fileType === 'image/png' ? undefined : 1.0; // Max quality for JPEG/WebP
+            tempCanvas.toBlob((blob) => {
+                const link = document.createElement('a');
+                link.download = `${sanitizedFileName}-${Math.round(scale * 100)}%.${extension}`;
+                link.href = URL.createObjectURL(blob);
+                console.log(`Download link: ${link.download}`);
+                link.click();
+                URL.revokeObjectURL(link.href); // Clean up
+                showLoadingIndicator(false);
+                document.body.removeChild(popup);
+                document.body.removeChild(overlay);
+            }, fileType, quality);
         }).catch(error => {
             console.error('Error rendering image for download:', error);
             alert('Hubo un error al preparar la imagen para descargar.');
@@ -1285,11 +1318,13 @@ downloadButton.addEventListener('click', () => {
             document.body.removeChild(overlay);
         });
     });
+
     document.getElementById('save-cancel').addEventListener('click', () => {
         console.log("Save cancel clicked");
         document.body.removeChild(popup);
         document.body.removeChild(overlay);
     });
+
     overlay.addEventListener('click', () => {
         console.log("Overlay clicked to close");
         document.body.removeChild(popup);
