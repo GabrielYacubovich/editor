@@ -10,9 +10,13 @@
 <body>
     <div class="editor">
         <div id="content">
-            <div  id="image-container">
+            <div   class="action-buttons" id="image-container">
                 <canvas id="canvas"></canvas>
-                <div id="loading-indicator" style="display: none;"></div>
+                <div id="controls-container"  class="action-buttons"  style="flex-direction: row;">
+                    <button style="background-color: rgb(20, 118, 74);font-weight: bold;" type="button" id="upload-new-photo">Subir imagen</button>
+
+                <button type="button"  id="crop-image-button">Crop<br> Image</button>
+            </div><div id="loading-indicator" style="display: none;"></div>
             </div>
 
             <div id="controls-container">

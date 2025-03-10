@@ -5,6 +5,7 @@ const undoButton = document.getElementById('undo');
 const redoButton = document.getElementById('redo');
 const restoreButton = document.getElementById('restore');
 const downloadButton = document.getElementById('download');
+const cropImageButton = document.getElementById('crop-image-button');
 const uploadNewPhotoButton = document.getElementById('upload-new-photo');
 const toggleOriginalButton = document.getElementById('toggle-original');
 const modal = document.getElementById('image-modal');
@@ -13,14 +14,17 @@ const cropModal = document.getElementById('crop-modal');
 const cropCanvas = document.getElementById('crop-canvas');
 const cropCtx = cropCanvas.getContext('2d');
 const previewModal = document.getElementById('preview-modal');
-
 let img = new Image();
 let originalImageData = null;
 let noiseSeed = Math.random();
 let fullResCanvas = document.createElement('canvas');
 let fullResCtx = fullResCanvas.getContext('2d');
 let isShowingOriginal = false;
-
+let originalFullResImage = new Image();
+let originalUploadedImage = new Image();
+let initialCropRect = { x: 0, y: 0, width: 0, height: 0 }; // Initialize as empty, set later
+let initialRotation = 0; 
+let originalCropImage = new Image(); 
 let settings = {
     brightness: 100,
     contrast: 100,
@@ -51,21 +55,17 @@ let settings = {
 let history = [{ filters: { ...settings }, imageData: null }];
 let redoHistory = [];
 let lastAppliedEffect = null;
-
 let originalWidth, originalHeight, previewWidth, previewHeight;
 let cropImage = new Image();
-let cropRect = { x: 0, y: 0, width: 0, height: 0 };
-let isDragging = false;
+let cropRect = { x: 0, y: 0, width: 0, height: 0 };let isDragging = false;
 let startX, startY;
 let lockAspectRatio = false;
 let aspectRatio = 1;
 let rotation = 0;
-
 function closeModal(modalElement) {
     modalElement.style.display = 'none';
     if (modalElement === cropModal) {
         isDragging = false;
-        rotation = 0;
         cropCanvas.style.cursor = 'default';
         uploadNewPhotoButton.style.display = 'block';
     }
@@ -73,37 +73,24 @@ function closeModal(modalElement) {
         document.getElementById('modal-controls').innerHTML = '';
     }
 }
-
 function setupModal(modalElement) {
     const closeBtn = modalElement.querySelector('.modal-close-btn');
     closeBtn.addEventListener('click', () => closeModal(modalElement));
-    modalElement.addEventListener('click', (e) => {
-        if (e.target === modalElement) closeModal(modalElement);
-    });
+    
+    // Only add click-outside-to-close for non-crop modals
+    if (modalElement !== cropModal) {
+        modalElement.addEventListener('click', (e) => {
+            if (e.target === modalElement) closeModal(modalElement);
+        });
+    }
+    
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && modalElement.style.display === 'block') {
             closeModal(modalElement);
         }
     });
 }
-
-[modal, cropModal, previewModal].forEach(setupModal);
-
-function debounce(func, wait) {
-    let timeout;
-    return function (...args) {
-        clearTimeout(timeout);
-        timeout = setTimeout(() => func.apply(this, args), wait);
-    };
-}
-
-uploadNewPhotoButton.addEventListener('click', (e) => {
-    e.preventDefault();
-    triggerFileUpload();
-});
-
 let isTriggering = false;
-
 function triggerFileUpload() {
     if (isTriggering) {
         console.log("triggerFileUpload blocked due to ongoing call");
@@ -144,13 +131,123 @@ function triggerFileUpload() {
         fileInput.click();
     }, 0);
 }
+function showCropModal(dataURL = null) {
+    if (!dataURL) {
+        if (!originalUploadedImage.src || originalUploadedImage.width === 0) {
+            console.error("No original uploaded image available to crop");
+            alert("No se puede abrir el modal de recorte: no hay imagen original cargada.");
+            return;
+        }
+        console.log("Opening crop modal with original image, current filters, and initialRotation:", initialRotation);
+        cropModal.style.display = 'block';
 
-uploadNewPhotoButton.removeEventListener('click', triggerFileUpload);
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = originalUploadedImage.width;
+        tempCanvas.height = originalUploadedImage.height;
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCtx.drawImage(originalUploadedImage, 0, 0);
+
+        applyBasicFiltersManually(tempCtx, tempCanvas, settings);
+        applyAdvancedFilters(tempCtx, tempCanvas, noiseSeed, 1)
+            .then(() => applyGlitchEffects(tempCtx, tempCanvas, noiseSeed, 1))
+            .then(() => applyComplexFilters(tempCtx, tempCanvas, noiseSeed, 1))
+            .then(() => {
+                cropImage.src = tempCanvas.toDataURL('image/png');
+                cropImage.onload = () => {
+                    console.log("cropImage loaded (filtered):", cropImage.width, "x", cropImage.height);
+                    const maxCanvasWidth = window.innerWidth - 100;
+                    const maxCanvasHeight = window.innerHeight - 250;
+                    let displayWidth = cropImage.width;
+                    let displayHeight = cropImage.height;
+                    const ratio = displayWidth / displayHeight;
+
+                    if (displayWidth > maxCanvasWidth || displayHeight > maxCanvasHeight) {
+                        if (ratio > maxCanvasWidth / maxCanvasHeight) {
+                            displayWidth = maxCanvasWidth;
+                            displayHeight = displayWidth / ratio;
+                        } else {
+                            displayHeight = maxCanvasHeight;
+                            displayWidth = displayHeight * ratio;
+                        }
+                    }
+                    cropCanvas.width = displayWidth;
+                    cropCanvas.height = displayHeight;
+
+                    if (initialCropRect.width === 0 || initialCropRect.height === 0) {
+                        cropRect = {
+                            x: 0,
+                            y: 0,
+                            width: cropCanvas.width,
+                            height: cropCanvas.height
+                        };
+                    } else {
+                        const scale = displayWidth / cropImage.width;
+                        cropRect = {
+                            x: initialCropRect.x * scale,
+                            y: initialCropRect.y * scale,
+                            width: initialCropRect.width * scale,
+                            height: initialCropRect.height * scale
+                        };
+                        cropRect.x = clamp(cropRect.x, 0, cropCanvas.width - cropRect.width);
+                        cropRect.y = clamp(cropRect.y, 0, cropCanvas.height - cropRect.height);
+                        cropRect.width = clamp(cropRect.width, 10, cropCanvas.width - cropRect.x);
+                        cropRect.height = clamp(cropRect.height, 10, cropCanvas.height - cropRect.y);
+                    }
+
+                    rotation = initialRotation;
+                    console.log("Crop modal initialized with rotation:", rotation, "cropRect:", cropRect);
+                    setupCropControls();
+                    drawCropOverlay();
+                };
+            })
+            .catch(err => {
+                console.error("Error applying filters in crop modal:", err);
+                closeModal(cropModal);
+            });
+    } else {
+        originalUploadedImage.src = dataURL;
+        cropImage.src = dataURL;
+        rotation = 0;
+        initialCropRect = { x: 0, y: 0, width: 0, height: 0 };
+        initialRotation = 0;
+        cropModal.style.display = 'block';
+        cropImage.onload = () => {
+            const maxCanvasWidth = window.innerWidth - 100;
+            const maxCanvasHeight = window.innerHeight - 250;
+            let displayWidth = cropImage.width;
+            let displayHeight = cropImage.height;
+            const ratio = displayWidth / displayHeight;
+
+            if (displayWidth > maxCanvasWidth || displayHeight > maxCanvasHeight) {
+                if (ratio > maxCanvasWidth / maxCanvasHeight) {
+                    displayWidth = maxCanvasWidth;
+                    displayHeight = displayWidth / ratio;
+                } else {
+                    displayHeight = maxCanvasHeight;
+                    displayWidth = displayHeight * ratio;
+                }
+            }
+            cropCanvas.width = displayWidth;
+            cropCanvas.height = displayHeight;
+            // Set crop rectangle to full canvas size instead of 80% with 10% insets
+            cropRect = {
+                x: 0,
+                y: 0,
+                width: cropCanvas.width,
+                height: cropCanvas.height
+            };
+            setupCropControls();
+            drawCropOverlay();
+        };
+    }
+    if (cropImage.complete && cropImage.naturalWidth !== 0) {
+        cropImage.onload();
+    }
+}
 uploadNewPhotoButton.addEventListener('click', (e) => {
     e.preventDefault();
     triggerFileUpload();
 });
-
 function updateControlIndicators() {
     const controlValues = [
         'brightness', 'contrast', 'grayscale', 'vibrance', 'highlights', 'shadows', 
@@ -168,7 +265,6 @@ function updateControlIndicators() {
         }
     });
 }
-
 function showLoadingIndicator(show = true) {
     const loading = document.getElementById('loading-indicator');
     if (!loading) {
@@ -193,7 +289,6 @@ function showLoadingIndicator(show = true) {
         loading.style.top = `${canvasRect.bottom + 10}px`;
     }
 }
-
 function applyBasicFiltersManually(ctx, canvas, settings) {
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const data = imageData.data;
@@ -240,11 +335,15 @@ function applyBasicFiltersManually(ctx, canvas, settings) {
     }
     ctx.putImageData(imageData, 0, 0);
 }
-
 function redrawImage(saveState = false) {
     showLoadingIndicator(true);
     fullResCanvas.width = originalWidth;
     fullResCanvas.height = originalHeight;
+    if (fullResCanvas.width === 0 || fullResCanvas.height === 0) {
+        console.error(`Invalid fullResCanvas dimensions: ${fullResCanvas.width}x${fullResCanvas.height}`);
+        showLoadingIndicator(false);
+        return Promise.reject("Invalid canvas dimensions");
+    }
     fullResCtx.clearRect(0, 0, fullResCanvas.width, fullResCanvas.height);
     fullResCtx.drawImage(img, 0, 0, originalWidth, originalHeight);
     applyBasicFiltersManually(fullResCtx, fullResCanvas, settings);
@@ -257,6 +356,11 @@ function redrawImage(saveState = false) {
             if (isShowingOriginal && originalImageData) {
                 ctx.putImageData(originalImageData, 0, 0);
             } else {
+                if (fullResCanvas.width === 0 || fullResCanvas.height === 0) {
+                    console.error("fullResCanvas dimensions became invalid before draw");
+                    showLoadingIndicator(false);
+                    return;
+                }
                 ctx.imageSmoothingEnabled = true;
                 ctx.imageSmoothingQuality = 'high';
                 ctx.drawImage(fullResCanvas, 0, 0, canvas.width, canvas.height);
@@ -270,14 +374,13 @@ function redrawImage(saveState = false) {
         .catch(error => {
             console.error('Error in redraw:', error);
             showLoadingIndicator(false);
+            throw error;  
         });
 }
-
 function seededRandom(seed) {
     let x = Math.sin(seed++) * 10000;
     return x - Math.floor(x);
 }
-
 function applyGlitchEffects(ctx, canvas, seed = noiseSeed, scaleFactor = 1) {
     return new Promise((resolve) => {
         let randomSeed = seed;
@@ -489,7 +592,6 @@ function applyGlitchEffects(ctx, canvas, seed = noiseSeed, scaleFactor = 1) {
         resolve();
     });
 }
-
 function applyComplexFilters(ctx, canvas, seed = noiseSeed, scaleFactor = 1) {
     return new Promise((resolve) => {
         let randomSeed = seed;
@@ -609,21 +711,62 @@ function applyComplexFilters(ctx, canvas, seed = noiseSeed, scaleFactor = 1) {
         resolve();
     });
 }
-
 toggleOriginalButton.addEventListener('click', () => {
     isShowingOriginal = !isShowingOriginal;
     toggleOriginalButton.textContent = isShowingOriginal ? 'Ver Editada' : 'Ver Original';
     redrawImage(false);
 });
+function setupCropControls() {
+    const cropControls = document.getElementById('crop-controls');
+    cropControls.innerHTML = '';
+    const rotationGroup = document.createElement('div');
+    rotationGroup.className = 'crop-control-group';
+    rotationGroup.innerHTML = `
+        <label for="rotation">Rotación:</label>
+        <input type="range" id="rotation" min="-180" max="180" value="${rotation}">
+        <span id="rotation-value">${rotation}°</span>
+    `;
+    cropControls.appendChild(rotationGroup);
+    const rotationInput = document.getElementById('rotation');
+    const rotationValue = document.getElementById('rotation-value');
+    rotationInput.addEventListener('input', (e) => {
+        rotation = parseInt(e.target.value);
+        rotationValue.textContent = `${rotation}°`;
+        drawCropOverlay();
+    });
+    
+    rotationValue.addEventListener('click', () => {
+        const newValue = prompt('Ingrese el ángulo de rotación (-180 a 180):', rotation);
+        if (newValue !== null) {
+            const parsedValue = parseInt(newValue);
+            if (!isNaN(parsedValue) && parsedValue >= -180 && parsedValue <= 180) {
+                rotation = parsedValue;
+                rotationInput.value = rotation;
+                rotationValue.textContent = `${rotation}°`;
+                drawCropOverlay();
+            }
+        }
+    });
 
-function showCropModal(dataURL) {
-    cropImage.src = dataURL;
-    cropModal.style.display = 'block';
-    cropImage.onload = () => {
+    const buttonGroup = document.createElement('div');
+    buttonGroup.className = 'crop-button-group';
+    buttonGroup.innerHTML = `
+        <button id="crop-restore">Restaurar</button>
+        <button id="crop-confirm">Confirmar</button>
+        <button id="crop-skip">Omitir</button>
+    `;
+    cropControls.appendChild(buttonGroup);
+
+    const restoreBtn = document.getElementById('crop-restore');
+    const confirmBtn = document.getElementById('crop-confirm');
+    const skipBtn = document.getElementById('crop-skip');
+
+    restoreBtn.addEventListener('click', () => {
+        rotation = 0;
         const maxCanvasWidth = window.innerWidth - 100;
         const maxCanvasHeight = window.innerHeight - 250;
-        let width = cropImage.width;
-        let height = cropImage.height;
+        let width = originalUploadedImage.width;
+        let height = originalUploadedImage.height;
         const ratio = width / height;
         if (width > maxCanvasWidth || height > maxCanvasHeight) {
             if (ratio > maxCanvasWidth / maxCanvasHeight) {
@@ -636,200 +779,293 @@ function showCropModal(dataURL) {
         }
         cropCanvas.width = width;
         cropCanvas.height = height;
-        cropCtx.drawImage(cropImage, 0, 0, cropCanvas.width, cropCanvas.height);
+        // Set crop rectangle to full canvas size instead of 80% with 10% insets
         cropRect = {
             x: 0,
             y: 0,
             width: cropCanvas.width,
             height: cropCanvas.height
         };
-        const cropControls = document.getElementById('crop-controls');
-        cropControls.innerHTML = '';
-        const rotationGroup = document.createElement('div');
-        rotationGroup.className = 'crop-control-group';
-        rotationGroup.innerHTML = `
-            <label for="rotation">Rotación:</label>
-            <input type="range" id="rotation" min="-180" max="180" value="0">
-            <span id="rotation-value">0°</span>
-        `;
-        cropControls.appendChild(rotationGroup);
-        const rotationInput = document.getElementById('rotation');
-        const rotationValue = document.getElementById('rotation-value');
-        rotationInput.addEventListener('input', (e) => {
-            rotation = parseInt(e.target.value);
-            rotationValue.textContent = `${rotation}°`;
-            drawCropOverlay();
-        });
-        rotationValue.addEventListener('click', () => {
-            const newValue = prompt('Ingrese el ángulo de rotación (-180 a 180):', rotation);
-            if (newValue !== null) {
-                const parsedValue = parseInt(newValue);
-                if (!isNaN(parsedValue) && parsedValue >= -180 && parsedValue <= 180) {
-                    rotation = parsedValue;
-                    rotationInput.value = rotation;
-                    rotationValue.textContent = `${rotation}°`;
+        rotationInput.value = 0;
+        rotationValue.textContent = '0°';
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = originalUploadedImage.width;
+        tempCanvas.height = originalUploadedImage.height;
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCtx.drawImage(originalUploadedImage, 0, 0);
+        applyBasicFiltersManually(tempCtx, tempCanvas, settings);
+        applyAdvancedFilters(tempCtx, tempCanvas, noiseSeed, 1)
+            .then(() => applyGlitchEffects(tempCtx, tempCanvas, noiseSeed, 1))
+            .then(() => applyComplexFilters(tempCtx, tempCanvas, noiseSeed, 1))
+            .then(() => {
+                cropImage.src = tempCanvas.toDataURL('image/png');
+                cropImage.onload = () => {
                     drawCropOverlay();
+                };
+                if (cropImage.complete && cropImage.naturalWidth !== 0) {
+                    cropImage.onload();
                 }
+            });
+    });
+    confirmBtn.addEventListener('click', () => {
+        let origWidth = cropImage.width;
+        let origHeight = cropImage.height;
+        if (origWidth === 0 || origHeight === 0) {
+            console.error("cropImage has invalid dimensions:", origWidth, "x", origHeight);
+            closeModal(cropModal);
+            return;
+        }
+        const displayWidth = cropCanvas.width;
+        const displayHeight = cropCanvas.height;
+        const displayScale = displayWidth / origWidth;
+        const angleRad = rotation * Math.PI / 180;
+        const cosA = Math.abs(Math.cos(angleRad));
+        const sinA = Math.abs(Math.sin(angleRad));
+        const fullRotatedWidth = Math.ceil(origWidth * cosA + origHeight * sinA);
+        const fullRotatedHeight = Math.ceil(origWidth * sinA + origHeight * cosA);
+        const fullRotatedCanvas = document.createElement('canvas');
+        fullRotatedCanvas.width = fullRotatedWidth;
+        fullRotatedCanvas.height = fullRotatedHeight;
+        const fullRotatedCtx = fullRotatedCanvas.getContext('2d');
+        fullRotatedCtx.translate(fullRotatedWidth / 2, fullRotatedHeight / 2);
+        fullRotatedCtx.rotate(angleRad);
+        fullRotatedCtx.translate(-origWidth / 2, -origHeight / 2);
+        fullRotatedCtx.drawImage(cropImage, 0, 0, origWidth, origHeight);
+        fullRotatedCtx.setTransform(1, 0, 0, 1, 0, 0);
+        const fitScale = Math.min(
+            origWidth / (origWidth * cosA + origHeight * sinA),
+            origHeight / (origWidth * sinA + origHeight * cosA)
+        );
+        const cropX = (cropRect.x - displayWidth / 2) / (fitScale * displayScale) + fullRotatedWidth / 2;
+        const cropY = (cropRect.y - displayHeight / 2) / (fitScale * displayScale) + fullRotatedHeight / 2;
+        let cropWidth = cropRect.width / (fitScale * displayScale);
+        let cropHeight = cropRect.height / (fitScale * displayScale);
+        cropWidth = Math.max(1, Math.round(cropWidth));
+        cropHeight = Math.max(1, Math.round(cropHeight));
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = cropWidth;
+        tempCanvas.height = cropHeight;
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCtx.imageSmoothingEnabled = true;
+        tempCtx.imageSmoothingQuality = 'high';
+        tempCtx.drawImage(
+            fullRotatedCanvas,
+            cropX, cropY, cropWidth, cropHeight,
+            0, 0, cropWidth, cropHeight
+        );
+        const origCropX = (cropRect.x - displayWidth / 2) / (fitScale * displayScale) + origWidth / 2;
+        const origCropY = (cropRect.y - displayHeight / 2) / (fitScale * displayScale) + origHeight / 2;
+        const origCropWidth = cropRect.width / (fitScale * displayScale);
+        const origCropHeight = cropRect.height / (fitScale * displayScale);
+        initialcropRect = {
+            x: cropCanvas.width * 0.1, // 10% inset from left
+            y: cropCanvas.height * 0.1, // 10% inset from top
+            width: cropCanvas.width * 0.8, // 80% of canvas width
+            height: cropCanvas.height * 0.8 // 80% of canvas height
+        };
+        initialRotation = rotation;
+        console.log("Initial crop state saved (original coords):", initialCropRect, "rotation:", initialRotation);
+        img.src = tempCanvas.toDataURL('image/png');
+        originalWidth = tempCanvas.width;
+        originalHeight = tempCanvas.height;
+        fullResCanvas.width = originalWidth;
+        fullResCanvas.height = originalHeight;
+        fullResCtx.drawImage(tempCanvas, 0, 0, originalWidth, originalHeight);
+        const loadImage = new Promise((resolve) => {
+            if (img.complete && img.naturalWidth !== 0) resolve();
+            else {
+                img.onload = resolve;
+                img.onerror = () => resolve();
             }
         });
-        const buttonGroup = document.createElement('div');
-        buttonGroup.className = 'crop-button-group';
-        buttonGroup.innerHTML = `
-            <button id="crop-restore">Restaurar</button>
-            <button id="crop-preview">Preview</button>
-            <button id="crop-confirm">Confirmar</button>
-            <button id="crop-skip">Omitir</button>
-        `;
-        cropControls.appendChild(buttonGroup);
-        const restoreBtn = document.getElementById('crop-restore');
-        const previewBtn = document.getElementById('crop-preview');
-        const confirmBtn = document.getElementById('crop-confirm');
-        const skipBtn = document.getElementById('crop-skip');
-        restoreBtn.addEventListener('click', () => {
-            rotation = 0;
-            cropRect = { x: 0, y: 0, width: cropCanvas.width, height: cropCanvas.height };
-            rotationInput.value = 0;
-            rotationValue.textContent = '0°';
-            drawCropOverlay();
+        loadImage.then(() => {
+            const maxDisplayWidth = Math.min(1920, window.innerWidth - 100);
+            const maxDisplayHeight = Math.min(1080, window.innerHeight - 250);
+            const minPreviewDimension = 800;
+            const ratio = originalWidth / originalHeight;
+            if (ratio > 1) {
+                previewWidth = Math.min(originalWidth, maxDisplayWidth);
+                previewHeight = previewWidth / ratio;
+                if (previewHeight > maxDisplayHeight) {
+                    previewHeight = maxDisplayHeight;
+                    previewWidth = previewHeight * ratio;
+                }
+                if (previewHeight < minPreviewDimension) {
+                    previewHeight = minPreviewDimension;
+                    previewWidth = previewHeight * ratio;
+                }
+            } else {
+                previewHeight = Math.min(originalHeight, maxDisplayHeight);
+                previewWidth = previewHeight * ratio;
+                if (previewWidth > maxDisplayWidth) {
+                    previewWidth = maxDisplayWidth;
+                    previewHeight = previewWidth / ratio;
+                }
+                if (previewWidth < minPreviewDimension) {
+                    previewWidth = minPreviewDimension;
+                    previewHeight = previewWidth / ratio;
+                }
+            }
+            canvas.width = Math.round(previewWidth);
+            canvas.height = Math.round(previewHeight);
+            redrawImage(true).then(() => {
+                originalFullResImage.src = fullResCanvas.toDataURL('image/png');
+                closeModal(cropModal);
+            }).catch(err => {
+                console.error("Redraw failed:", err);
+                closeModal(cropModal);
+            });
         });
-        previewBtn.addEventListener('click', () => {
-            const originalWidth = cropImage.width;
-            const originalHeight = cropImage.height;
-            const displayWidth = cropCanvas.width;
-            const displayHeight = cropCanvas.height;
-            const displayScale = displayWidth / originalWidth;
-            const angleRad = rotation * Math.PI / 180;
-            const cosA = Math.abs(Math.cos(angleRad));
-            const sinA = Math.abs(Math.sin(angleRad));
-            const fullRotatedWidth = Math.ceil(originalWidth * cosA + originalHeight * sinA);
-            const fullRotatedHeight = Math.ceil(originalWidth * sinA + originalHeight * cosA);
-            const fullRotatedCanvas = document.createElement('canvas');
-            fullRotatedCanvas.width = fullRotatedWidth;
-            fullRotatedCanvas.height = fullRotatedHeight;
-            const fullRotatedCtx = fullRotatedCanvas.getContext('2d');
-            fullRotatedCtx.translate(fullRotatedWidth / 2, fullRotatedHeight / 2);
-            fullRotatedCtx.rotate(angleRad);
-            fullRotatedCtx.translate(-originalWidth / 2, -originalHeight / 2);
-            fullRotatedCtx.drawImage(cropImage, 0, 0, originalWidth, originalHeight);
-            fullRotatedCtx.setTransform(1, 0, 0, 1, 0, 0);
-            const fitScale = Math.min(
-                originalWidth / (originalWidth * cosA + originalHeight * sinA),
-                originalHeight / (originalWidth * sinA + originalHeight * cosA)
-            );
-            const cropX = (cropRect.x - displayWidth / 2) / (fitScale * displayScale) + fullRotatedWidth / 2;
-            const cropY = (cropRect.y - displayHeight / 2) / (fitScale * displayScale) + fullRotatedHeight / 2;
-            const cropWidth = cropRect.width / (fitScale * displayScale);
-            const cropHeight = cropRect.height / (fitScale * displayScale);
-            const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = cropWidth;
-            tempCanvas.height = cropHeight;
-            const tempCtx = tempCanvas.getContext('2d');
-            tempCtx.drawImage(
-                fullRotatedCanvas,
-                cropX, cropY, cropWidth, cropHeight,
-                0, 0, cropWidth, cropHeight
-            );
-            const previewImage = document.getElementById('preview-image');
-            previewImage.src = tempCanvas.toDataURL('image/png');
-            previewModal.style.display = 'block';
-        });
-        confirmBtn.addEventListener('click', () => {
-            const originalWidth = cropImage.width;
-            const originalHeight = cropImage.height;
-            const displayWidth = cropCanvas.width;
-            const displayHeight = cropCanvas.height;
-            const displayScale = displayWidth / originalWidth;
-            const angleRad = rotation * Math.PI / 180;
-            const cosA = Math.abs(Math.cos(angleRad));
-            const sinA = Math.abs(Math.sin(angleRad));
-            const fullRotatedWidth = Math.ceil(originalWidth * cosA + originalHeight * sinA);
-            const fullRotatedHeight = Math.ceil(originalWidth * sinA + originalHeight * cosA);
-            const fullRotatedCanvas = document.createElement('canvas');
-            fullRotatedCanvas.width = fullRotatedWidth;
-            fullRotatedCanvas.height = fullRotatedHeight;
-            const fullRotatedCtx = fullRotatedCanvas.getContext('2d');
-            fullRotatedCtx.translate(fullRotatedWidth / 2, fullRotatedHeight / 2);
-            fullRotatedCtx.rotate(angleRad);
-            fullRotatedCtx.translate(-originalWidth / 2, -originalHeight / 2);
-            fullRotatedCtx.drawImage(cropImage, 0, 0, originalWidth, originalHeight);
-            fullRotatedCtx.setTransform(1, 0, 0, 1, 0, 0);
-            const fitScale = Math.min(
-                originalWidth / (originalWidth * cosA + originalHeight * sinA),
-                originalHeight / (originalWidth * sinA + originalHeight * cosA)
-            );
-            const cropX = (cropRect.x - displayWidth / 2) / (fitScale * displayScale) + fullRotatedWidth / 2;
-            const cropY = (cropRect.y - displayHeight / 2) / (fitScale * displayScale) + fullRotatedHeight / 2;
-            const cropWidth = cropRect.width / (fitScale * displayScale);
-            const cropHeight = cropRect.height / (fitScale * displayScale);
-            const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = cropWidth;
-            tempCanvas.height = cropHeight;
-            const tempCtx = tempCanvas.getContext('2d');
-            tempCtx.drawImage(
-                fullRotatedCanvas,
-                cropX, cropY, cropWidth, cropHeight,
-                0, 0, cropWidth, cropHeight
-            );
-            img.src = tempCanvas.toDataURL('image/png');
-            closeModal(cropModal);
-        });
-        skipBtn.addEventListener('click', () => {
-            img.src = cropImage.src;
-            closeModal(cropModal);
-            uploadNewPhotoButton.style.display = 'block';
-        });
-        const lockGroup = document.createElement('div');
-        lockGroup.className = 'crop-lock-group';
-        lockGroup.innerHTML = `
-            <input type="checkbox" id="lock-aspect">
-            <label for="lock-aspect">Bloquear proporción</label>
-        `;
-        cropControls.appendChild(lockGroup);
-        const lockCheckbox = document.getElementById('lock-aspect');
-        lockCheckbox.addEventListener('change', (e) => {
-            lockAspectRatio = e.target.checked;
-            aspectRatio = cropRect.width / cropRect.height;
-        });
-        drawCropOverlay();
-    };
+    });
+    skipBtn.addEventListener('click', () => {
+        img.src = fullResCanvas.toDataURL('image/png');
+        originalWidth = fullResCanvas.width;
+        originalHeight = fullResCanvas.height;
+        const maxDisplayWidth = Math.min(1920, window.innerWidth - 100);
+        const maxDisplayHeight = Math.min(1080, window.innerHeight - 250);
+        const minPreviewDimension = 800;
+        const ratio = originalWidth / originalHeight;
+        if (ratio > 1) {
+            previewWidth = Math.min(originalWidth, maxDisplayWidth);
+            previewHeight = previewWidth / ratio;
+            if (previewHeight > maxDisplayHeight) {
+                previewHeight = maxDisplayHeight;
+                previewWidth = previewHeight * ratio;
+            }
+            if (previewHeight < minPreviewDimension) {
+                previewHeight = minPreviewDimension;
+                previewWidth = previewHeight * ratio;
+            }
+        } else {
+            previewHeight = Math.min(originalHeight, maxDisplayHeight);
+            previewWidth = previewHeight * ratio;
+            if (previewWidth > maxDisplayWidth) {
+                previewWidth = maxDisplayWidth;
+                previewHeight = previewWidth / ratio;
+            }
+            if (previewWidth < minPreviewDimension) {
+                previewWidth = minPreviewDimension;
+                previewHeight = previewWidth / ratio;
+            }
+        }
+        previewWidth = Math.round(previewWidth);
+        previewHeight = Math.round(previewHeight);
+        canvas.width = previewWidth;
+        canvas.height = previewHeight;
+        closeModal(cropModal);
+        uploadNewPhotoButton.style.display = 'block';
+        const proceedWithRedraw = () => {
+            redrawImage(true)
+                .then(() => {
+                    originalFullResImage.src = fullResCanvas.toDataURL('image/png');
+                    console.log("Redraw completed successfully after skip");
+                })
+                .catch(err => {
+                    console.error("Redraw failed on skip:", err);
+                });
+        };
+        if (img.complete && img.naturalWidth !== 0) {
+            console.log("Image already loaded, skipping onload wait");
+            proceedWithRedraw();
+        } else {
+            const loadImage = new Promise((resolve) => {
+                img.onload = () => {
+                    console.log("Image loaded for skip");
+                    resolve();
+                };
+                img.onerror = () => {
+                    console.error("Image load error on skip");
+                    resolve();
+                };
+            });
+            loadImage.then(proceedWithRedraw);
+        }
+    });
+    const lockGroup = document.createElement('div');
+    lockGroup.className = 'crop-lock-group';
+    lockGroup.innerHTML = `
+        <input type="checkbox" id="lock-aspect" ${lockAspectRatio ? 'checked' : ''}>
+        <label for="lock-aspect">Bloquear proporción</label>
+    `;
+    cropControls.appendChild(lockGroup);
+    const lockCheckbox = document.getElementById('lock-aspect');
+    lockCheckbox.addEventListener('change', (e) => {
+        lockAspectRatio = e.target.checked;
+        aspectRatio = cropRect.width / cropRect.height;
+    });
 }
-
-function drawCropOverlay() {
-    cropCtx.clearRect(0, 0, cropCanvas.width, cropCanvas.height);
-    const originalWidth = cropImage.width;
-    const originalHeight = cropImage.height;
-    const displayWidth = cropCanvas.width;
-    const displayHeight = cropCanvas.height;
-    const displayScale = displayWidth / originalWidth;
-    const angleRad = rotation * Math.PI / 180;
-    const cosA = Math.abs(Math.cos(angleRad));
-    const sinA = Math.abs(Math.sin(angleRad));
-    const fitScale = Math.min(
-        originalWidth / (originalWidth * cosA + originalHeight * sinA),
-        originalHeight / (originalWidth * sinA + originalHeight * cosA)
-    );
-    cropCtx.save();
-    cropCtx.translate(displayWidth / 2, displayHeight / 2);
-    cropCtx.rotate(angleRad);
-    cropCtx.scale(fitScale * displayScale, fitScale * displayScale);
-    cropCtx.translate(-originalWidth / 2, -originalHeight / 2);
-    cropCtx.filter = 'blur(5px)';
-    cropCtx.drawImage(cropImage, 0, 0, originalWidth, originalHeight);
-    cropCtx.restore();
-    cropCtx.save();
-    cropCtx.beginPath();
-    cropCtx.rect(cropRect.x, cropRect.y, cropRect.width, cropRect.height);
-    cropCtx.clip();
-    cropCtx.translate(displayWidth / 2, displayHeight / 2);
-    cropCtx.rotate(angleRad);
-    cropCtx.scale(fitScale * displayScale, fitScale * displayScale);
-    cropCtx.translate(-originalWidth / 2, -originalHeight / 2);
-    cropCtx.drawImage(cropImage, 0, 0, originalWidth, originalHeight);
-    cropCtx.restore();
-    cropCtx.strokeStyle = '#00ff00';
-    cropCtx.lineWidth = 2;
-    cropCtx.strokeRect(cropRect.x, cropRect.y, cropRect.width, cropRect.height);
-}
+const stopDragHandler = () => stopCropDrag();
+    document.addEventListener('mouseup', stopDragHandler);
+    document.addEventListener('touchend', stopDragHandler);
+    
+    
+    function drawCropOverlay() {
+        const originalWidth = cropImage.width;
+        const originalHeight = cropImage.height;
+        const angleRad = rotation * Math.PI / 180;
+        const cosA = Math.abs(Math.cos(angleRad));
+        const sinA = Math.abs(Math.sin(angleRad));
+        const fullRotatedWidth = originalWidth * cosA + originalHeight * sinA;
+        const fullRotatedHeight = originalWidth * sinA + originalHeight * cosA;
+    
+        if (cropCanvas.width === 0 || cropCanvas.height === 0) {
+            const maxCanvasWidth = window.innerWidth - 100;
+            const maxCanvasHeight = window.innerHeight - 250;
+            let displayWidth = originalWidth;
+            let displayHeight = originalHeight;
+            const ratio = displayWidth / displayHeight;
+    
+            if (displayWidth > maxCanvasWidth || displayHeight > maxCanvasHeight) {
+                if (ratio > maxCanvasWidth / maxCanvasHeight) {
+                    displayWidth = maxCanvasWidth;
+                    displayHeight = displayWidth / ratio;
+                } else {
+                    displayHeight = maxCanvasHeight;
+                    displayWidth = displayHeight * ratio;
+                }
+            }
+            cropCanvas.width = displayWidth;
+            cropCanvas.height = displayHeight;
+        }
+    
+        const scaleX = cropCanvas.width / fullRotatedWidth;
+        const scaleY = cropCanvas.height / fullRotatedHeight;
+        const displayScale = Math.min(scaleX, scaleY);
+    
+        cropCtx.clearRect(0, 0, cropCanvas.width, cropCanvas.height);
+    
+        cropCtx.save();
+        cropCtx.translate(cropCanvas.width / 2, cropCanvas.height / 2);
+        cropCtx.rotate(angleRad);
+        cropCtx.scale(displayScale, displayScale);
+        cropCtx.translate(-originalWidth / 2, -originalHeight / 2);
+        cropCtx.filter = 'blur(5px)';
+        cropCtx.drawImage(cropImage, 0, 0, originalWidth, originalHeight);
+        cropCtx.restore();
+    
+        cropCtx.save();
+        cropCtx.beginPath();
+        cropCtx.rect(cropRect.x, cropRect.y, cropRect.width, cropRect.height);
+        cropCtx.clip();
+        cropCtx.translate(cropCanvas.width / 2, cropCanvas.height / 2);
+        cropCtx.rotate(angleRad);
+        cropCtx.scale(displayScale, displayScale);
+        cropCtx.translate(-originalWidth / 2, -originalHeight / 2);
+        cropCtx.drawImage(cropImage, 0, 0, originalWidth, originalHeight);
+        cropCtx.restore();
+    
+        cropCtx.strokeStyle = '#800000';
+        cropCtx.lineWidth = 3;
+        cropCtx.setLineDash([5, 5]);
+        cropCtx.strokeRect(cropRect.x, cropRect.y, cropRect.width, cropRect.height);
+        cropCtx.setLineDash([]);
+    
+        // Minimal clamping to ensure validity only
+        cropRect.x = Math.max(0, Math.min(cropRect.x, cropCanvas.width - cropRect.width));
+        cropRect.y = Math.max(0, Math.min(cropRect.y, cropCanvas.height - cropRect.height));
+        cropRect.width = Math.max(10, Math.min(cropRect.width, cropCanvas.width - cropRect.x));
+        cropRect.height = Math.max(10, Math.min(cropRect.height, cropCanvas.height - cropRect.y));
+    }
 
 cropCanvas.addEventListener('mousedown', startCropDrag);
 cropCanvas.addEventListener('mousemove', adjustCropDrag);
@@ -837,7 +1073,6 @@ cropCanvas.addEventListener('mouseup', stopCropDrag);
 cropCanvas.addEventListener('touchstart', startCropDrag);
 cropCanvas.addEventListener('touchmove', adjustCropDrag);
 cropCanvas.addEventListener('touchend', stopCropDrag);
-
 cropCanvas.addEventListener('mousemove', (e) => {
     const rect = cropCanvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -864,9 +1099,7 @@ cropCanvas.addEventListener('mousemove', (e) => {
     } else {
         cropCanvas.style.cursor = 'default';
     }
-});
-
-function nearSide(x, y, rectX, rectY, width, height, side, margin) {
+});function nearSide(x, y, rectX, rectY, width, height, side, margin) {
     switch (side) {
         case 'left':
             return Math.abs(x - rectX) < margin && y > rectY && y < rectY + height;
@@ -911,12 +1144,45 @@ function startCropDrag(e) {
     if (isDragging) drawCropOverlay();
 }
 
+
+function stopCropDrag(e) {
+    if (isDragging) {
+        e.preventDefault();
+        e.stopPropagation();
+        isDragging = false;
+        cropCanvas.style.cursor = 'default';
+        
+        // Ensure final position is within bounds
+        cropRect.x = clamp(cropRect.x, 0, cropCanvas.width - cropRect.width);
+        cropRect.y = clamp(cropRect.y, 0, cropCanvas.height - cropRect.height);
+        cropRect.width = clamp(cropRect.width, 10, cropCanvas.width - cropRect.x);
+        cropRect.height = clamp(cropRect.height, 10, cropCanvas.height - cropRect.y);
+        
+        drawCropOverlay();
+    }
+}
+
+// Add mouseleave event to ensure drag stops when leaving canvas
+cropCanvas.addEventListener('mouseleave', (e) => {
+    if (isDragging) {
+        stopCropDrag(e);
+    }
+});
+
+// Modify adjustCropDrag to prevent sticking
 function adjustCropDrag(e) {
     if (!isDragging) return;
     e.preventDefault();
+    e.stopPropagation();
+    
     const rect = cropCanvas.getBoundingClientRect();
-    const x = (e.clientX || e.touches[0].clientX) - rect.left;
-    const y = (e.clientY || e.touches[0].clientY) - rect.top;
+    let x = (e.clientX || (e.touches && e.touches[0].clientX)) - rect.left;
+    let y = (e.clientY || (e.touches && e.touches[0].clientY)) - rect.top;
+    
+    // Clamp coordinates to exact canvas bounds
+    x = clamp(x, 0, cropCanvas.width);
+    y = clamp(y, 0, cropCanvas.height);
+    
     if (isDragging === 'move') {
         cropRect.x = clamp(x - startX, 0, cropCanvas.width - cropRect.width);
         cropRect.y = clamp(y - startY, 0, cropCanvas.height - cropRect.height);
@@ -924,10 +1190,6 @@ function adjustCropDrag(e) {
         resizeCrop(x, y);
     }
     drawCropOverlay();
-}
-
-function stopCropDrag() {
-    isDragging = false;
 }
 
 function nearCorner(x, y, cornerX, cornerY, margin) {
@@ -941,59 +1203,75 @@ function insideCrop(x, y) {
 
 function resizeCrop(x, y) {
     let newWidth, newHeight;
+
     if (isDragging === 'top-left') {
         newWidth = clamp(cropRect.x + cropRect.width - x, 10, cropCanvas.width - cropRect.x);
         newHeight = lockAspectRatio ? newWidth / aspectRatio : clamp(cropRect.y + cropRect.height - y, 10, cropCanvas.height - cropRect.y);
-        cropRect.x = clamp(x, 0, cropRect.x + cropRect.width - 10);
-        cropRect.y = lockAspectRatio ? cropRect.y + cropRect.height - newHeight : clamp(y, 0, cropRect.y + cropRect.height - 10);
+        cropRect.x = clamp(x, 0, cropCanvas.width - newWidth);
+        cropRect.y = lockAspectRatio ? cropRect.y + cropRect.height - newHeight : clamp(y, 0, cropCanvas.height - newHeight);
         cropRect.width = newWidth;
         cropRect.height = newHeight;
     } else if (isDragging === 'top-right') {
-        newWidth = clamp(x - cropRect.x, 10, cropCanvas.width - cropRect.x);
+        newWidth = clamp(x - cropRect.x, 10, cropCanvas.width - cropRect.x); // Max is full remaining width
         newHeight = lockAspectRatio ? newWidth / aspectRatio : clamp(cropRect.y + cropRect.height - y, 10, cropCanvas.height - cropRect.y);
-        cropRect.y = lockAspectRatio ? cropRect.y + cropRect.height - newHeight : clamp(y, 0, cropRect.y + cropRect.height - 10);
+        cropRect.y = lockAspectRatio ? cropRect.y + cropRect.height - newHeight : clamp(y, 0, cropCanvas.height - newHeight);
         cropRect.width = newWidth;
         cropRect.height = newHeight;
     } else if (isDragging === 'bottom-left') {
         newWidth = clamp(cropRect.x + cropRect.width - x, 10, cropCanvas.width - cropRect.x);
-        newHeight = lockAspectRatio ? newWidth / aspectRatio : clamp(y - cropRect.y, 10, cropCanvas.height - cropRect.y);
-        cropRect.x = clamp(x, 0, cropRect.x + cropRect.width - 10);
+        newHeight = lockAspectRatio ? newWidth / aspectRatio : clamp(y - cropRect.y, 10, cropCanvas.height - cropRect.y); // Max is full remaining height
+        cropRect.x = clamp(x, 0, cropCanvas.width - newWidth);
         cropRect.width = newWidth;
         cropRect.height = newHeight;
     } else if (isDragging === 'bottom-right') {
-        newWidth = clamp(x - cropRect.x, 10, cropCanvas.width - cropRect.x);
-        newHeight = lockAspectRatio ? newWidth / aspectRatio : clamp(y - cropRect.y, 10, cropCanvas.height - cropRect.y);
+        newWidth = clamp(x - cropRect.x, 10, cropCanvas.width - cropRect.x); // Max is full remaining width
+        newHeight = lockAspectRatio ? newWidth / aspectRatio : clamp(y - cropRect.y, 10, cropCanvas.height - cropRect.y); // Max is full remaining height
         cropRect.width = newWidth;
         cropRect.height = newHeight;
     } else if (isDragging === 'left') {
         newWidth = clamp(cropRect.x + cropRect.width - x, 10, cropCanvas.width - cropRect.x);
         newHeight = lockAspectRatio ? newWidth / aspectRatio : cropRect.height;
-        cropRect.x = clamp(x, 0, cropRect.x + cropRect.width - 10);
+        cropRect.x = clamp(x, 0, cropCanvas.width - newWidth);
         cropRect.width = newWidth;
         if (lockAspectRatio) cropRect.height = newHeight;
     } else if (isDragging === 'right') {
-        newWidth = clamp(x - cropRect.x, 10, cropCanvas.width - cropRect.x);
+        newWidth = clamp(x - cropRect.x, 10, cropCanvas.width - cropRect.x); // Max is full remaining width
         newHeight = lockAspectRatio ? newWidth / aspectRatio : cropRect.height;
         cropRect.width = newWidth;
         if (lockAspectRatio) cropRect.height = newHeight;
     } else if (isDragging === 'top') {
         newHeight = clamp(cropRect.y + cropRect.height - y, 10, cropCanvas.height - cropRect.y);
         newWidth = lockAspectRatio ? newHeight * aspectRatio : cropRect.width;
-        cropRect.y = clamp(y, 0, cropRect.y + cropRect.height - 10);
+        cropRect.y = clamp(y, 0, cropCanvas.height - newHeight);
         cropRect.height = newHeight;
         if (lockAspectRatio) cropRect.width = newWidth;
     } else if (isDragging === 'bottom') {
-        newHeight = clamp(y - cropRect.y, 10, cropCanvas.height - cropRect.y);
+        newHeight = clamp(y - cropRect.y, 10, cropCanvas.height - cropRect.y); // Max is full remaining height
         newWidth = lockAspectRatio ? newHeight * aspectRatio : cropRect.width;
         cropRect.height = newHeight;
         if (lockAspectRatio) cropRect.width = newWidth;
     }
-}
 
+    // Ensure final bounds are exact
+    cropRect.x = clamp(cropRect.x, 0, cropCanvas.width - cropRect.width);
+    cropRect.y = clamp(cropRect.y, 0, cropCanvas.height - cropRect.height);
+    cropRect.width = clamp(cropRect.width, 10, cropCanvas.width - cropRect.x);
+    cropRect.height = clamp(cropRect.height, 10, cropCanvas.height - cropRect.y);
+}
 function clamp(value, min, max) {
     return Math.min(Math.max(value, min), max);
 }
-
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
 canvas.addEventListener('click', () => {
     try {
         const controlsContainer = document.querySelector('.controls');
@@ -1020,7 +1298,6 @@ canvas.addEventListener('click', () => {
         console.error("Error opening modal:", error);
     }
 });
-
 img.onload = function () {
     originalWidth = img.width;
     originalHeight = img.height;
@@ -1066,10 +1343,20 @@ img.onload = function () {
     const tempCtx = tempCanvas.getContext('2d');
     tempCtx.drawImage(img, 0, 0, previewWidth, previewHeight);
     originalImageData = tempCtx.getImageData(0, 0, previewWidth, previewHeight);
-    redrawImage(true);
+    if (!originalUploadedImage.src || originalUploadedImage.src === "") {
+        originalUploadedImage.src = img.src;
+        console.log("originalUploadedImage set to:", originalUploadedImage.src.length, "bytes");
+    } else {
+        console.log("originalUploadedImage already set, preserving:", originalUploadedImage.src.length, "bytes");
+    }
+    redrawImage(true).then(() => {
+        originalFullResImage.src = fullResCanvas.toDataURL('image/png');
+        console.log("originalFullResImage updated:", originalFullResImage.src.length, "bytes");
+    }).catch(err => {
+        console.error("Failed to redraw image on load:", err);
+    });
     uploadNewPhotoButton.style.display = 'block';
 };
-
 let filterWorker;
 if (window.Worker) {
     filterWorker = new Worker(URL.createObjectURL(new Blob([`
@@ -1112,7 +1399,6 @@ if (window.Worker) {
         };
     `], { type: 'application/javascript' })));
 }
-
 function applyAdvancedFilters(ctx, canvas, noiseSeed, scaleFactor) {
     return new Promise((resolve) => {
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -1165,13 +1451,9 @@ function applyAdvancedFilters(ctx, canvas, noiseSeed, scaleFactor) {
         }
     });
 }
-
 downloadButton.addEventListener('click', () => {
     console.log("Download button clicked");
-
-    // Check if any edits have been applied
     const isEdited = Object.values(settings).some(value => value !== 100 && value !== 0);
-
     const popup = document.createElement('div');
     popup.style.position = 'fixed';
     popup.style.top = '50%';
@@ -1221,22 +1503,17 @@ downloadButton.addEventListener('click', () => {
     overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
     overlay.style.zIndex = '1001';
     document.body.appendChild(overlay);
-
     const resolutionSelect = document.getElementById('save-resolution-scale');
     const fileTypeSelect = document.getElementById('save-file-type');
     const dimensionsSpan = document.getElementById('dimensions');
     const fileSizeSpan = document.getElementById('file-size');
-
-    // Store the original image data URL for unedited downloads
     const originalDataURL = img.src;
-
     function updateFileInfo() {
         const scale = parseFloat(resolutionSelect.value) / 100;
         const width = Math.round(originalWidth * scale);
         const height = Math.round(originalHeight * scale);
         dimensionsSpan.textContent = `${width} x ${height}`;
         console.log(`Updating file info: ${width}x${height}`);
-
         const tempCanvas = document.createElement('canvas');
         tempCanvas.width = width;
         tempCanvas.height = height;
@@ -1244,9 +1521,8 @@ downloadButton.addEventListener('click', () => {
         tempCtx.imageSmoothingEnabled = true;
         tempCtx.imageSmoothingQuality = 'high';
         tempCtx.drawImage(fullResCanvas, 0, 0, width, height);
-
         const fileType = fileTypeSelect.value;
-        const quality = fileType === 'image/png' ? undefined : 1.0; // PNG doesn't use quality; JPEG/WebP atClicked max quality
+        const quality = fileType === 'image/png' ? undefined : 1.0; 
         tempCanvas.toBlob((blob) => {
             if (blob) {
                 const sizeKB = Math.round(blob.size / 1024);
@@ -1258,11 +1534,9 @@ downloadButton.addEventListener('click', () => {
             }
         }, fileType, quality);
     }
-
     updateFileInfo();
     resolutionSelect.addEventListener('change', updateFileInfo);
     fileTypeSelect.addEventListener('change', updateFileInfo);
-
     document.getElementById('save-confirm').addEventListener('click', () => {
         console.log("Save confirm clicked");
         const fileName = document.getElementById('save-file-name').value.trim() || 'nueva-imagen';
@@ -1270,11 +1544,8 @@ downloadButton.addEventListener('click', () => {
         const scale = parseFloat(resolutionSelect.value) / 100;
         const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9-_]/g, '');
         const extension = fileType.split('/')[1];
-
         showLoadingIndicator(true);
-
         if (!isEdited && scale === 1.0) {
-            // If no edits and full resolution, download the original file directly
             console.log("Downloading original unedited image");
             const link = document.createElement('a');
             link.download = `${sanitizedFileName}.${extension}`;
@@ -1285,19 +1556,15 @@ downloadButton.addEventListener('click', () => {
             document.body.removeChild(overlay);
             return;
         }
-
-        // Process the image through the canvas
         const tempCanvas = document.createElement('canvas');
         tempCanvas.width = Math.round(originalWidth * scale);
         tempCanvas.height = Math.round(originalHeight * scale);
         const tempCtx = tempCanvas.getContext('2d');
         tempCtx.imageSmoothingEnabled = true;
         tempCtx.imageSmoothingQuality = 'high';
-
         redrawImage(false).then(() => {
             console.log("Image redrawn for download");
             tempCtx.drawImage(fullResCanvas, 0, 0, tempCanvas.width, tempCanvas.height);
-
             const quality = fileType === 'image/png' ? undefined : 1.0; // Max quality for JPEG/WebP
             tempCanvas.toBlob((blob) => {
                 const link = document.createElement('a');
@@ -1318,22 +1585,18 @@ downloadButton.addEventListener('click', () => {
             document.body.removeChild(overlay);
         });
     });
-
     document.getElementById('save-cancel').addEventListener('click', () => {
         console.log("Save cancel clicked");
         document.body.removeChild(popup);
         document.body.removeChild(overlay);
     });
-
     overlay.addEventListener('click', () => {
         console.log("Overlay clicked to close");
         document.body.removeChild(popup);
         document.body.removeChild(overlay);
     });
 });
-
 let isRedrawing = false;
-
 function saveImageState(isOriginal = false) {
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     if (isOriginal) {
@@ -1349,7 +1612,6 @@ function saveImageState(isOriginal = false) {
         }
     }
 }
-
 function handleUndo(e) {
     e.preventDefault();
     if (history.length > 1) {
@@ -1367,7 +1629,6 @@ function handleUndo(e) {
         console.log("No more states to undo.");
     }
 }
-
 function handleRedo(e) {
     e.preventDefault();
     if (redoHistory.length > 0) {
@@ -1382,10 +1643,8 @@ function handleRedo(e) {
         console.log('Redo triggered');
     }
 }
-
 const debouncedUndo = debounce(handleUndo, 200);
 const debouncedRedo = debounce(handleRedo, 200);
-
 function addButtonListeners(button, handler) {
     button.setAttribute('role', 'button');
     button.addEventListener('click', handler);
@@ -1401,10 +1660,15 @@ function addButtonListeners(button, handler) {
     });
     button.addEventListener('touchmove', (e) => e.preventDefault());
 }
-
 addButtonListeners(undoButton, debouncedUndo);
 addButtonListeners(redoButton, debouncedRedo);
-
+cropImageButton.addEventListener('click', () => {
+    if (!img.src || img.src === "") {
+        console.warn("No image loaded to crop");
+        return;
+    }
+    showCropModal(); 
+});
 restoreButton.addEventListener('click', () => {
     settings = { 
         brightness: 100, 
@@ -1437,14 +1701,16 @@ restoreButton.addEventListener('click', () => {
         input.value = settings[input.id];
     });
     updateControlIndicators();
-    ctx.putImageData(originalImageData, 0, 0);
-    saveImageState(true);
-    redrawImage(false);
+    fullResCanvas.width = originalWidth;
+    fullResCanvas.height = originalHeight;
+    fullResCtx.drawImage(img, 0, 0, originalWidth, originalHeight);
+    redrawImage(true).then(() => {
+        originalFullResImage.src = fullResCanvas.toDataURL('image/png'); 
+        ctx.drawImage(fullResCanvas, 0, 0, canvas.width, canvas.height);
+    });
 });
-
 let isDraggingSlider = false;
 let tempSettings = {};
-
 controls.forEach(control => {
     control.addEventListener('mousedown', () => {
         isDraggingSlider = true;
@@ -1514,7 +1780,6 @@ controls.forEach(control => {
         }
     });
     });
-    
     document.addEventListener('keydown', (e) => {
         if (e.ctrlKey && e.key === 'z') {
             debouncedUndo(e);
@@ -1522,11 +1787,7 @@ controls.forEach(control => {
             debouncedRedo(e);
         }
     });
-    
     function initialize() {
         updateControlIndicators();
-        const defaultImage = 'path/to/default/image.jpg';
-        img.src = defaultImage;
     }
-    
     initialize();

@@ -96,7 +96,7 @@
 .action-buttons {
     margin-top: 10px; /* Reduced from 20px */
     display: flex;
-    gap: 5px; /* Reduced from 10px */
+    gap: 20px; /* Reduced from 10px */
     flex-wrap: wrap;
 }
 
