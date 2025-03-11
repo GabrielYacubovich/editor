@@ -156,7 +156,7 @@ function outsideClickHandler(e) {
 document.addEventListener('DOMContentLoaded', () => {
     setupModal(document.getElementById('image-modal'), false);
     setupModal(document.getElementById('crop-modal'), false);
-    setupModal(document.getElementById('preview-modal'), true);
+    setupModal(document.getElementById('preview-modal'), true); // Already set to true
 });
 function showCropModal(dataURL = null) {
     if (!dataURL) {
@@ -717,6 +717,7 @@ function setupCropControls(unfilteredCanvas) {
         </div>
         <div class="crop-button-group">
             <button id="crop-restore">Restaurar</button>
+            <button id="crop-upload">Subir Imagen</button> <!-- New Upload Button -->
             <button id="crop-confirm">Continuar</button>
             <button id="crop-skip">Omitir</button>
         </div>
@@ -729,10 +730,12 @@ function setupCropControls(unfilteredCanvas) {
     const rotationInput = document.getElementById('rotation');
     const rotationValue = document.getElementById('rotation-value');
     const restoreBtn = document.getElementById('crop-restore');
+    const uploadBtn = document.getElementById('crop-upload'); // New button
     const confirmBtn = document.getElementById('crop-confirm');
     const skipBtn = document.getElementById('crop-skip');
     const lockCheckbox = document.getElementById('lock-aspect');
 
+    // Existing rotation input logic
     rotationInput.addEventListener('input', (e) => {
         rotation = parseInt(e.target.value);
         rotationValue.textContent = `${rotation}°`;
@@ -752,6 +755,18 @@ function setupCropControls(unfilteredCanvas) {
         }
     });
 
+    // New upload button logic
+    uploadBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        triggerFileUpload(); // Reuse existing upload function
+    });
+
+    uploadBtn.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        triggerFileUpload(); // Ensure touch compatibility
+    });
+
+    // Existing button logic (restore, confirm, skip, lock) remains unchanged
     restoreBtn.addEventListener('click', () => {
         rotation = 0;
         rotationInput.value = 0;
@@ -795,7 +810,8 @@ function setupCropControls(unfilteredCanvas) {
     });
 
     confirmBtn.addEventListener('click', (e) => {
-        e.preventDefault(); // Prevent default behavior
+        e.preventDefault();
+        // Existing confirm logic remains unchanged
         let origWidth = cropImage.width;
         let origHeight = cropImage.height;
         if (origWidth === 0 || origHeight === 0) {
@@ -836,18 +852,18 @@ function setupCropControls(unfilteredCanvas) {
             0, 0, cropWidth, cropHeight
         );
         img.src = tempCanvas.toDataURL('image/png');
-    originalUploadedImage.src = tempCanvas.toDataURL('image/png');
-    originalWidth = tempCanvas.width;
-    originalHeight = tempCanvas.height;
-    fullResCanvas.width = originalWidth;
-    fullResCanvas.height = originalHeight;
-    fullResCtx.drawImage(tempCanvas, 0, 0, originalWidth, originalHeight);
-    const previewTempCanvas = document.createElement('canvas');
-    previewTempCanvas.width = canvas.width;
-    previewTempCanvas.height = canvas.height;
-    const previewTempCtx = previewTempCanvas.getContext('2d');
-    previewTempCtx.drawImage(tempCanvas, 0, 0, canvas.width, canvas.height);
-    originalImageData = previewTempCtx.getImageData(0, 0, canvas.width, canvas.height);
+        originalUploadedImage.src = tempCanvas.toDataURL('image/png');
+        originalWidth = tempCanvas.width;
+        originalHeight = tempCanvas.height;
+        fullResCanvas.width = originalWidth;
+        fullResCanvas.height = originalHeight;
+        fullResCtx.drawImage(tempCanvas, 0, 0, originalWidth, originalHeight);
+        const previewTempCanvas = document.createElement('canvas');
+        previewTempCanvas.width = canvas.width;
+        previewTempCanvas.height = canvas.height;
+        const previewTempCtx = previewTempCanvas.getContext('2d');
+        previewTempCtx.drawImage(tempCanvas, 0, 0, canvas.width, canvas.height);
+        originalImageData = previewTempCtx.getImageData(0, 0, canvas.width, canvas.height);
         initialCropRect = { x: cropX, y: cropY, width: cropWidth, height: cropHeight };
         initialRotation = rotation;
         console.log("Initial crop state saved (original coords):", initialCropRect, "rotation:", initialRotation);
@@ -895,19 +911,19 @@ function setupCropControls(unfilteredCanvas) {
                 })
                 .catch(err => console.error("Redraw failed:", err))
                 .finally(() => {
-                    closeModal(cropModal); // Ensure modal closes
-                    uploadNewPhotoButton.style.display = 'block'; // Ensure button visibility
+                    closeModal(cropModal);
+                    uploadNewPhotoButton.style.display = 'block';
                 });
         });
     });
 
-    // Add touch event for confirm button
     confirmBtn.addEventListener('touchend', (e) => {
         e.preventDefault();
-        confirmBtn.click(); // Trigger click event
+        confirmBtn.click();
     });
 
     skipBtn.addEventListener('click', () => {
+        // Existing skip logic remains unchanged
         img.src = fullResCanvas.toDataURL('image/png');
         originalWidth = fullResCanvas.width;
         originalHeight = fullResCanvas.height;
@@ -1298,39 +1314,54 @@ img.onload = function () {
     fullResCanvas.width = originalWidth;
     fullResCanvas.height = originalHeight;
     fullResCtx.drawImage(img, 0, 0, originalWidth, originalHeight);
-    const maxDisplayWidth = Math.min(1920, window.innerWidth - 100);
-    const maxDisplayHeight = Math.min(1080, window.innerHeight - 250);
-    const minPreviewDimension = 800;
+  
+    const maxDisplayWidth = Math.min(1920, window.innerWidth - 20); // Reduced padding for mobile
+    const maxDisplayHeight = window.innerHeight - (window.innerWidth <= 768 ? 0.4 * window.innerHeight + 20 : 250); // 40vh offset on mobile
+    const minPreviewDimension = 400; // Smaller minimum for mobile
     const ratio = originalWidth / originalHeight;
-    if (ratio > 1) {
+  
+    if (window.innerWidth <= 768) {
+      // Mobile: Fit vertically first
+      previewHeight = Math.min(originalHeight, maxDisplayHeight);
+      previewWidth = previewHeight * ratio;
+      if (previewWidth > maxDisplayWidth) {
+        previewWidth = maxDisplayWidth;
+        previewHeight = previewWidth / ratio;
+      }
+    } else {
+      // Desktop: Existing logic
+      if (ratio > 1) {
         previewWidth = Math.min(originalWidth, maxDisplayWidth);
         previewHeight = previewWidth / ratio;
         if (previewHeight > maxDisplayHeight) {
-            previewHeight = maxDisplayHeight;
-            previewWidth = previewHeight * ratio;
+          previewHeight = maxDisplayHeight;
+          previewWidth = previewHeight * ratio;
         }
         if (previewHeight < minPreviewDimension) {
-            previewHeight = minPreviewDimension;
-            previewWidth = previewHeight * ratio;
+          previewHeight = minPreviewDimension;
+          previewWidth = previewHeight * ratio;
         }
-    } else {
+      } else {
         previewHeight = Math.min(originalHeight, maxDisplayHeight);
         previewWidth = previewHeight * ratio;
         if (previewWidth > maxDisplayWidth) {
-            previewWidth = maxDisplayWidth;
-            previewHeight = previewWidth / ratio;
+          previewWidth = maxDisplayWidth;
+          previewHeight = previewWidth / ratio;
         }
         if (previewWidth < minPreviewDimension) {
-            previewWidth = minPreviewDimension;
-            previewHeight = previewWidth / ratio;
+          previewWidth = minPreviewDimension;
+          previewHeight = previewWidth / ratio;
         }
+      }
     }
-    canvas.width = previewWidth;
-    canvas.height = previewHeight;
+  
+    canvas.width = Math.round(previewWidth);
+    canvas.height = Math.round(previewHeight);
     fullResCtx.drawImage(img, 0, 0, originalWidth, originalHeight);
     const initialImageData = fullResCtx.getImageData(0, 0, originalWidth, originalHeight);
     fullResCtx.putImageData(initialImageData, 0, 0);
     ctx.drawImage(fullResCanvas, 0, 0, previewWidth, previewHeight);
+  
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = previewWidth;
     tempCanvas.height = previewHeight;
@@ -1338,6 +1369,7 @@ img.onload = function () {
     tempCtx.drawImage(img, 0, 0, previewWidth, previewHeight);
     originalImageData = tempCtx.getImageData(0, 0, previewWidth, previewHeight);
     console.log("originalImageData initialized:", originalImageData.width, "x", originalImageData.height);
+    
     if (!originalUploadedImage.src || originalUploadedImage.src === "") {
         originalUploadedImage.src = img.src;
         console.log("originalUploadedImage set to:", originalUploadedImage.src.length, "bytes");
@@ -1813,6 +1845,15 @@ controls.forEach(control => {
             if (openModal) {
                 console.log(`Closing ${openModal.id} with ESC key`);
                 closeModal(openModal);
+            }
+    
+            // Handle the download popup (not a standard modal)
+            const downloadPopup = document.querySelector('div[style*="position: fixed"][style*="z-index: 1002"]');
+            const downloadOverlay = document.querySelector('div[style*="position: fixed"][style*="z-index: 1001"]');
+            if (downloadPopup && downloadOverlay) {
+                console.log("Closing download popup with ESC key");
+                document.body.removeChild(downloadPopup);
+                document.body.removeChild(downloadOverlay);
             }
         } else if (e.ctrlKey && e.key === 'z') {
             debouncedUndo(e);

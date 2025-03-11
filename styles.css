@@ -256,6 +256,7 @@ body {
     display: flex;
     justify-content: space-between;
     gap: 5px;
+    flex-wrap: wrap; /* Allow wrapping if needed on smaller screens */
 }
 
 .crop-button-group button {
@@ -266,10 +267,20 @@ body {
     border: none;
     cursor: pointer;
     border-radius: 5px;
+    min-width: 80px; /* Ensure buttons don't get too small */
 }
 
 .crop-button-group button:hover {
     background-color: #3a3a3a;
+}
+
+/* Specific styling for the upload button */
+.crop-button-group button#crop-upload {
+    background-color: rgb(20, 118, 74); /* Match the main upload button */
+}
+
+.crop-button-group button#crop-upload:hover {
+    background-color: rgb(25, 150, 94); /* Slightly lighter green on hover */
 }
 
 .crop-lock-group {
@@ -485,8 +496,14 @@ body {
         flex: 0 0 35px;
         font-size: 12px;
     }
-
+    .crop-button-group {
+        gap: 5px;
+    }
     .crop-button-group button {
         padding: 6px;
+        font-size: 12px;
+        min-width: 70px;
     }
+    
+
 }
