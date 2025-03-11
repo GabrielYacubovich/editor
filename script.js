@@ -69,6 +69,11 @@ function closeModal(modalElement) {
         isDragging = false;
         cropCanvas.style.cursor = 'default';
         uploadNewPhotoButton.style.display = 'block';
+        // Reset upload state when crop modal closes
+        if (isTriggering) {
+            console.log("Crop modal closed, resetting upload state");
+            cleanupFileInput();
+        }
     }
     if (modalElement === modal) {
         document.getElementById('modal-controls').innerHTML = '';
@@ -96,6 +101,8 @@ function setupModal(modalElement, allowOutsideClick = false) {
     }
 }
 let isTriggering = false;
+let fileInput = null; // Store reference to file input globally for cleanup
+
 function triggerFileUpload() {
     if (isTriggering) {
         console.log("triggerFileUpload blocked due to ongoing call");
@@ -103,40 +110,59 @@ function triggerFileUpload() {
     }
     isTriggering = true;
     console.log("triggerFileUpload called");
-    const fileInput = document.createElement('input');
+
+    // Create and configure file input
+    fileInput = document.createElement('input');
     fileInput.type = 'file';
     fileInput.accept = 'image/*';
     fileInput.style.display = 'none';
     document.body.appendChild(fileInput);
+
     fileInput.addEventListener('change', (e) => {
         console.log("File input changed, files:", e.target.files);
         const file = e.target.files[0];
         if (!file) {
             console.log("No file selected");
-            document.body.removeChild(fileInput);
-            isTriggering = false;
+            cleanupFileInput();
             return;
         }
         const reader = new FileReader();
         reader.onload = (event) => {
             console.log("FileReader onload, data length:", event.target.result.length);
-            trueOriginalImage.src = event.target.result; // Set true original
-            originalUploadedImage.src = event.target.result; // Set working copy
+            trueOriginalImage.src = event.target.result;
+            originalUploadedImage.src = event.target.result;
             showCropModal(event.target.result);
-            document.body.removeChild(fileInput);
-            isTriggering = false;
+            cleanupFileInput();
         };
         reader.onerror = (error) => {
             console.error("FileReader error:", error);
-            document.body.removeChild(fileInput);
-            isTriggering = false;
+            cleanupFileInput();
         };
         reader.readAsDataURL(file);
     });
+
+    // Trigger file input click
     setTimeout(() => {
         console.log("File input clicked");
         fileInput.click();
     }, 0);
+
+    // Timeout to clean up if no interaction occurs
+    setTimeout(() => {
+        if (isTriggering && fileInput && document.body.contains(fileInput)) {
+            console.log("File input timed out, cleaning up");
+            cleanupFileInput();
+        }
+    }, 1000); // 5 seconds timeout
+}
+
+// Cleanup function to reset state and remove file input
+function cleanupFileInput() {
+    if (fileInput && document.body.contains(fileInput)) {
+        document.body.removeChild(fileInput);
+    }
+    fileInput = null;
+    isTriggering = false;
 }
 // Helper functions
 function closeModalHandler() {
@@ -1847,13 +1873,19 @@ controls.forEach(control => {
                 closeModal(openModal);
             }
     
-            // Handle the download popup (not a standard modal)
+            // Handle the download popup
             const downloadPopup = document.querySelector('div[style*="position: fixed"][style*="z-index: 1002"]');
             const downloadOverlay = document.querySelector('div[style*="position: fixed"][style*="z-index: 1001"]');
             if (downloadPopup && downloadOverlay) {
                 console.log("Closing download popup with ESC key");
                 document.body.removeChild(downloadPopup);
                 document.body.removeChild(downloadOverlay);
+            }
+    
+            // Clean up upload process if in progress
+            if (isTriggering) {
+                console.log("ESC pressed during upload, cleaning up");
+                cleanupFileInput();
             }
         } else if (e.ctrlKey && e.key === 'z') {
             debouncedUndo(e);
