@@ -4,16 +4,16 @@
     justify-content: center;
     align-items: flex-start;
     height: 100vh;
-    padding: 10px; /* Added padding for better edge spacing */
+    padding: 10px; 
+    overflow: hidden;
 }
-
 /* Container for image and controls */
 #content {
     display: flex;
     justify-content: space-between;
     width: 100%;
     max-width: 1200px;
-    gap: 20px; /* Controlled gap between image and controls */
+    gap: 20px;
 }
 
 /* Image container */
@@ -21,8 +21,8 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: 70%; /* Reduced from 80% */
-    padding-right: 20px; /* Reduced from 50px */
+    width: 70%; 
+    padding-right: 20px;
 }
 
 /* Canvas styling */
@@ -36,6 +36,7 @@
     cursor: pointer;
     display: block;
     object-fit: contain; 
+     z-index: 1;
 }
 
 /* Controls container */
@@ -48,6 +49,9 @@
     min-width: 250px; /* Ensures controls don’t collapse too much */
 }
 
+#sliders-wrapper {
+    width: 100%;
+}
 /* Controls (sliders and labels) */
 .controls {
     display: flex;
@@ -94,11 +98,20 @@
 
 /* Action buttons */
 .action-buttons {
+    margin-top: 10px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* 3 equal columns */
+    gap: 10px; /* Reduced from 20px for tighter spacing */
+    justify-content: center;
+    width: 100%;
+}
+
+.action-buttons-2 {
     margin-top: 10px; /* Reduced from 20px */
     display: flex;
     gap: 20px; /* Reduced from 10px */
-    flex-wrap: wrap;
 }
+
 
 .action-buttons button,
 #upload-new-photo,
@@ -118,6 +131,7 @@
     -webkit-tap-highlight-color: transparent;
     -webkit-user-select: none;
     user-select: none;
+    font-weight: bold;
 }
 
 .action-buttons button:hover,
@@ -355,67 +369,123 @@
     #content {
         flex-direction: column;
         align-items: center;
-        gap: 10px; /* Reduced from implied larger spacing */
+        gap: 10px;
+        overflow: hidden;
     }
 
     #image-container {
         width: 100%;
         padding-right: 0;
+        height: calc(100vh - 150px); /* Leave space for controls */
+        position: fixed; /* Fix image position */
+        top: 0;
+        left: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center; /* Center image vertically */
+        background-color: #fff; /* Optional: background to cover any gaps */
         margin-bottom: 10px; /* Reduced from 20px */
+
+    }
+    #canvas {
+        max-height: calc(100vh - 150px); /* Fit within available space */
+        width: 100%;
+        height: auto;
+        object-fit: contain;
+    }
+    #controls-container {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 150px; /* Fixed height for compact view */
+        min-width: 0; /* Override desktop min-width */
+        z-index: 20; /* Above image */
+        background-color: rgba(255, 255, 255, 0.95); /* Semi-transparent white */
+        border-top: 2px solid #ccc;
+        overflow: hidden; /* Hide overflow by default */
     }
 
-    #controls-container {
+    #controls-container-2 {
+        position: relative;
         width: 100%;
-        min-width: unset; /* Remove min-width on mobile */
+        display: flex;
+        flex-direction: row;
+        justify-content: center; /* Already present, reinforced */
+        align-items: center; /* Add to vertically center buttons */
+        gap: 8px;
+        margin-top: 10px;
+        padding: 5px;
+        flex-wrap: wrap; /* Allow wrapping if needed */
+    }
+
+    #controls-container-2 button {
+        padding: 8px 16px;
+        font-size: 14px;
+        min-width: 100px;
+        min-height: 48px;
+        flex: 0 1 auto; /* Allow buttons to size naturally */
+    }
+
+    #controls-container button {
+        padding: 8px 16px; /* Slightly smaller padding */
+        font-size: 14px; /* Smaller text */
+        min-width: 100px; /* Ensure buttons don’t shrink too much */
     }
 
     .controls {
-        padding: 5px; /* Reduced from 10px */
+        padding: 0;
+        flex-grow: 1; /* Allow controls to take available space */
     }
 
     .controls div {
-        flex-direction: row; /* Changed to row for better mobile UX */
+        flex-direction: row;
         align-items: center;
-        margin-bottom: 4px; /* Reduced from 5px */
+        margin-bottom: 8px; /* Slightly more space for touch */
     }
 
     .controls label {
-        flex: 0 0 80px; /* Reduced from 90px */
-        margin-right: 5px;
-        margin-bottom: 0; /* Reset from column layout */
-        font-size: 12px; /* Smaller font */
+        flex: 0 0 80px;
+        font-size: 12px;
     }
 
     .controls input[type="range"] {
-        max-width: 100%;
+        flex: 1;
+        max-width: none; /* Full width on mobile */
         margin: 0 5px;
     }
 
     .controls span {
-        flex: 0 0 30px; /* Reduced from 35px */
-        margin-top: 0; /* Reset from column layout */
-        font-size: 12px; /* Smaller font */
+        display: none; /* Hide value spans to save space */
     }
 
     .controls h3 {
-        margin: 10px 0 5px; /* Reduced spacing */
-        font-size: 14px; /* Reduced from 15px */
+        margin: 10px 0 5px;
+        font-size: 14px;
     }
 
     .action-buttons {
-        margin-top: 5px; /* Reduced from 10px */
-        flex-direction: row; /* Keep row with wrapping */
+        margin-bottom: 5px;
+        margin-bottom: 5px;
+        display: flex;
+        flex-direction: row;
+        justify-content: center; /* Already present, reinforced */
+        align-items: center; /* Add to vertically center buttons */
         gap: 5px;
-        justify-content: center;
+        flex-wrap: wrap; /* Already present, ensures wrapping works */
+        width: 100%; /* Ensure full width for centering */
     }
+
 
     .action-buttons button,
     #upload-new-photo,
     #toggle-original {
-        max-width: 90px; /* Reduced from 200px */
-        padding: 6px 10px; /* Reduced from 8px 15px */
-        font-size: 12px; /* Reduced from 13px */
-        min-height: 36px; /* Reduced from 40px */
+        padding: 6px 10px;
+        font-size: 12px;
+        max-width: 90px;
+        min-height: 36px;
+        flex: 0 1 auto; /* Allow buttons to size naturally */
     }
 
     /* Modal Responsiveness */
@@ -430,7 +500,14 @@
         align-items: center;
         gap: 10px; /* Reduced from 15px */
     }
-
+    #sliders-wrapper {
+        height: 100%;
+        overflow-y: auto; /* Scrollable */
+        padding: 10px;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+    }
     #modal-image {
         max-width: 100%;
     }
@@ -486,4 +563,5 @@
     #download-modal-content {
         max-width: 90%;
     }
+    
 }

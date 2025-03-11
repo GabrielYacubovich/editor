@@ -12,15 +12,20 @@
         <div id="content">
             <div   class="action-buttons" id="image-container">
                 <canvas id="canvas"></canvas>
-                <div id="controls-container"  class="action-buttons"  style="flex-direction: row;">
-                    <button style="background-color: rgb(20, 118, 74);font-weight: bold;" type="button" id="upload-new-photo">Subir imagen</button>
+                <div id="controls-container-2"  class="action-buttons-2"  style="flex-direction: row;">
+                    <button style="background-color: rgb(20, 118, 74);font-weight: bold;" type="button" id="upload-new-photo">Subir</button>
 
-                <button type="button"  id="crop-image-button">Crop<br> Image</button>
+                <button type="button"  id="crop-image-button">Cortar</button>
             </div><div id="loading-indicator" style="display: none;"></div>
+            <div class="hide-mobile"><b>To do:</b>
+                <br>poder hacer drag drop desde la derecha<br>
+            </div>
+
             </div>
 
             <div id="controls-container">
                 <div style="padding-top: 0px;"></div>
+                <div id="sliders-wrapper">
                 <div class="controls">
                     <!-- Basic Filters -->
                     <div>
@@ -129,15 +134,14 @@
                         <input type="range" id="edge-detect" min="0" max="100" value="0">
                     </div>
                 </div>
+            </div>
 
                 <div class="action-buttons">
                     <button type="button" id="undo" aria-label="Deshacer la última acción">Deshacer</button>
                     <button type="button" id="redo" aria-label="Rehacer la última acción deshecha">Rehacer</button>
                     <button type="button" id="restore" aria-label="Restaurar imagen a estado original">Restaurar</button>
-                    <button type="button" id="toggle-original" aria-label="Alternar entre imagen original y editada">Ver Original</button>
+                    <button type="button" id="toggle-original" aria-label="Alternar entre imagen original y editada">Original</button>
                     <button type="button" id="download" aria-label="Descargar la imagen editada">Descargar</button>
-                    <button style="background-color: rgb(20, 118, 74);font-weight: bold;" type="button" id="upload-new-photo">Subir imagen</button>
-
                 </div>
             </div>
         </div>
