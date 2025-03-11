@@ -7,6 +7,8 @@
     padding: 10px;
     overflow: hidden;
     -webkit-overflow-scrolling: touch; /* Smooth scrolling for iOS */
+    -webkit-user-select: none; /* Prevent text selection interfering with touch */
+    user-select: none;
 }
 
 /* Container for image and controls */
@@ -53,8 +55,10 @@
 
 #sliders-wrapper {
     width: 100%;
-    overflow-y: auto; /* Ensure sliders are scrollable */
+    overflow-y: scroll; /* Changed to scroll for explicit behavior */
     -webkit-overflow-scrolling: touch; /* Smooth scrolling for iOS */
+    -webkit-user-select: none; /* Prevent text selection */
+    user-select: none;
 }
 
 /* Controls (sliders and labels) */
@@ -84,6 +88,7 @@
     flex: 1;
     max-width: 140px;
     margin: 0 5px;
+    touch-action: pan-y; /* Ensure sliders don’t interfere with vertical scroll */
 }
 
 .controls span {
@@ -118,7 +123,7 @@
     gap: 10px;
     justify-content: center;
     align-items: center;
-    flex-wrap: nowrap; /* Prevent wrapping */
+    flex-wrap: nowrap;
     width: 100%;
 }
 
@@ -441,10 +446,13 @@
 
     #sliders-wrapper {
         height: calc(100% - 60px);
-        overflow-y: auto;
+        overflow-y: scroll; /* Changed to scroll for explicit behavior */
+        -webkit-overflow-scrolling: touch; /* Smooth scrolling for iOS */
         padding: 10px;
         box-sizing: border-box;
-        -webkit-overflow-scrolling: touch;
+        -webkit-user-select: none; /* Prevent text selection */
+        user-select: none;
+        touch-action: pan-y; /* Allow vertical scrolling */
     }
 
     .controls {
@@ -466,6 +474,7 @@
         flex: 1;
         max-width: none;
         margin: 0 5px;
+        touch-action: pan-y; /* Ensure sliders don’t block scrolling */
     }
 
     .controls span {
