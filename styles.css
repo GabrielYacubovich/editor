@@ -354,7 +354,7 @@ body {
     #image-container {
         width: 100%;
         padding: 0;
-        height: calc(100vh - 220px); /* Adjust based on controls height */
+        height: calc(100vh - 240px); /* Increased to account for two rows */
         position: relative;
         top: 0;
         left: 0;
@@ -368,7 +368,7 @@ body {
 
     #canvas {
         max-width: 100%;
-        max-height: calc(100vh - 220px);
+        max-height: calc(100vh - 240px);
         width: 100%;
         height: auto;
         object-fit: contain;
@@ -379,7 +379,7 @@ body {
         bottom: 0;
         left: 0;
         width: 100%;
-        height: 220px; /* Fixed height for buttons and sliders */
+        height: 240px; /* Increased height for two button rows */
         min-width: 0;
         z-index: 20;
         background-color: rgba(255, 255, 255, 0.95);
@@ -389,25 +389,26 @@ body {
 
     #button-bar {
         display: flex;
-        flex-direction: row;
-        flex-wrap: wrap;
-                overflow-x: auto;
-        justify-content: flex-start;
+        flex-wrap: wrap; /* Stack buttons in two rows */
+        justify-content: center; /* Center the buttons */
         padding: 5px;
         gap: 5px;
         margin-bottom: 5px;
+        height: 80px; /* Fixed height for two rows */
+        overflow: hidden; /* Prevent overflow */
     }
 
     #button-bar button {
-        padding: 6px 10px;
-        font-size: 12px;
-        max-width: 90px;
-        min-height: 36px;
-        flex: 0 0 auto;
+        padding: 6px 8px; /* Smaller padding for tighter fit */
+        font-size: 11px; /* Smaller font for mobile */
+        max-width: 80px; /* Slightly smaller buttons */
+        min-height: 32px; /* Reduced height */
+        flex: 1 1 calc(33.33% - 10px); /* Aim for 3-4 buttons per row */
+        box-sizing: border-box;
     }
 
     #sliders-wrapper {
-        height: calc(100% - 50px); /* Remaining space after buttons */
+        height: calc(100% - 80px); /* Remaining space after buttons */
         overflow-y: auto;
         padding: 5px 10px;
         box-sizing: border-box;
