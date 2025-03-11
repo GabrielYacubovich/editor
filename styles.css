@@ -390,8 +390,8 @@ body {
     #button-bar {
         display: flex;
         flex-direction: row;
-        flex-wrap: nowrap;
-        overflow-x: auto;
+        flex-wrap: wrap;
+                overflow-x: auto;
         justify-content: flex-start;
         padding: 5px;
         gap: 5px;
