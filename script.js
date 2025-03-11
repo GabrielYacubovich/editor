@@ -1226,29 +1226,34 @@ function debounce(func, wait) {
     };
 }
 canvas.addEventListener('click', () => {
-    try {
-        const controlsContainer = document.querySelector('.controls');
-        const modalControls = document.getElementById('modal-controls');
-        if (!controlsContainer || !modalControls) {
-            console.error("Controls or modal-controls not found in DOM");
-            return;
+    // Check if the viewport width is greater than 768px (desktop view)
+    if (window.innerWidth > 768) {
+        try {
+            const controlsContainer = document.querySelector('.controls');
+            const modalControls = document.getElementById('modal-controls');
+            if (!controlsContainer || !modalControls) {
+                console.error("Controls or modal-controls not found in DOM");
+                return;
+            }
+            const clonedControls = controlsContainer.cloneNode(true);
+            modalControls.innerHTML = '';
+            modalControls.appendChild(clonedControls);
+            modalImage.src = canvas.toDataURL('image/png');
+            const modalInputs = modalControls.querySelectorAll('input[type="range"]');
+            modalInputs.forEach(input => {
+                input.addEventListener('input', debounce((e) => {
+                    const id = e.target.id;
+                    settings[id] = parseInt(e.target.value);
+                    updateControlIndicators();
+                    redrawImage(true);
+                }, 300));
+            });
+            modal.style.display = 'block';
+        } catch (error) {
+            console.error("Error opening modal:", error);
         }
-        const clonedControls = controlsContainer.cloneNode(true);
-        modalControls.innerHTML = '';
-        modalControls.appendChild(clonedControls);
-        modalImage.src = canvas.toDataURL('image/png');
-        const modalInputs = modalControls.querySelectorAll('input[type="range"]');
-        modalInputs.forEach(input => {
-            input.addEventListener('input', debounce((e) => {
-                const id = e.target.id;
-                settings[id] = parseInt(e.target.value);
-                updateControlIndicators();
-                redrawImage(true);
-            }, 300));
-        });
-        modal.style.display = 'block';
-    } catch (error) {
-        console.error("Error opening modal:", error);
+    } else {
+        console.log("Preview modal disabled in mobile view (width <= 768px)");
     }
 });
 img.onload = function () {
