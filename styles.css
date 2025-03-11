@@ -1,17 +1,28 @@
-/* Container for the entire layout */
+/* Reset and Base Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    overflow-x: hidden;
+    height: 100vh;
+}
+
+/* Editor Container */
 .editor {
     display: flex;
     justify-content: center;
     align-items: flex-start;
     height: 100vh;
     padding: 10px;
-    overflow: hidden;
-    -webkit-overflow-scrolling: touch; /* Smooth scrolling for iOS */
-    -webkit-user-select: none; /* Prevent text selection interfering with touch */
+    -webkit-user-select: none;
     user-select: none;
 }
 
-/* Container for image and controls */
+/* Content Container */
 #content {
     display: flex;
     justify-content: space-between;
@@ -20,7 +31,7 @@
     gap: 20px;
 }
 
-/* Image container */
+/* Image Container */
 #image-container {
     display: flex;
     flex-direction: column;
@@ -29,10 +40,9 @@
     padding-right: 20px;
 }
 
-/* Canvas styling */
 #canvas {
     image-rendering: auto;
-    max-width: 1920px;
+    max-width: 100%;
     max-height: 690px;
     width: 100%;
     height: auto;
@@ -43,7 +53,7 @@
     z-index: 1;
 }
 
-/* Controls container */
+/* Controls Container */
 #controls-container {
     display: flex;
     flex-direction: column;
@@ -55,21 +65,52 @@
 
 #sliders-wrapper {
     width: 100%;
-    overflow-y: scroll; /* Changed to scroll for explicit behavior */
-    -webkit-overflow-scrolling: touch; /* Smooth scrolling for iOS */
-    -webkit-user-select: none; /* Prevent text selection */
-    user-select: none;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
-/* Controls (sliders and labels) */
+/* Button Bar */
+#button-bar {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    justify-content: center;
+    width: 100%;
+    margin-bottom: 10px;
+}
+
+#button-bar button {
+    padding: 8px 15px;
+    background-color: #000;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    width: 100%;
+    max-width: 100px;
+    min-height: 40px;
+    font-size: 13px;
+    font-weight: bold;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+
+#button-bar button:hover {
+    background-color: #3a3a3a;
+}
+
+#button-bar button:active {
+    background-color: #555;
+}
+
+/* Controls (Sliders) */
 .controls {
     display: flex;
     flex-direction: column;
     width: 100%;
-    padding: 0px 10px 10px 0px;
+    padding: 0 10px 10px 0;
 }
 
-/* Each control (slider + label + value) */
 .controls div {
     display: flex;
     align-items: center;
@@ -88,7 +129,7 @@
     flex: 1;
     max-width: 140px;
     margin: 0 5px;
-    touch-action: pan-y; /* Ensure sliders don’t interfere with vertical scroll */
+    touch-action: pan-y;
 }
 
 .controls span {
@@ -98,66 +139,11 @@
     text-align: right;
 }
 
-/* Complex Filters Header */
 .controls h3 {
     margin: 15px 0 5px;
     font-size: 15px;
     font-weight: bold;
     color: #333;
-}
-
-/* Action buttons */
-.action-buttons {
-    margin-top: 10px;
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
-    justify-content: center;
-    width: 100%;
-}
-
-.action-buttons-2 {
-    margin-top: 10px;
-    display: flex;
-    flex-direction: row;
-    gap: 10px;
-    justify-content: center;
-    align-items: center;
-    flex-wrap: nowrap;
-    width: 100%;
-}
-
-.action-buttons button,
-#upload-new-photo,
-#toggle-original {
-    padding: 8px 15px;
-    background-color: #000;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    width: 100%;
-    max-width: 100px;
-    min-height: 40px;
-    box-sizing: border-box;
-    font-size: 13px;
-    touch-action: manipulation;
-    -webkit-tap-highlight-color: transparent;
-    -webkit-user-select: none;
-    user-select: none;
-    font-weight: bold;
-}
-
-.action-buttons button:hover,
-#upload-new-photo:hover,
-#toggle-original:hover {
-    background-color: #3a3a3a;
-}
-
-.action-buttons button:active,
-#upload-new-photo:active,
-#toggle-original:active {
-    background-color: #555;
 }
 
 /* Modal Styles */
@@ -179,7 +165,6 @@
     max-width: 1200px;
     padding: 15px;
     background-color: #fff;
-    box-sizing: border-box;
     border-radius: 8px;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
     max-height: 90vh;
@@ -199,7 +184,7 @@
     color: #ff0000;
 }
 
-/* Image Modal Specific */
+/* Image Modal */
 #image-modal .modal-inner {
     display: flex;
     flex-direction: row;
@@ -220,10 +205,9 @@
     max-height: 90vh;
     overflow-y: auto;
     padding: 10px;
-    box-sizing: border-box;
 }
 
-/* Crop Modal Specific */
+/* Crop Modal */
 #crop-canvas {
     max-width: 100%;
     max-height: 70vh;
@@ -302,7 +286,7 @@
     font-size: 14px;
 }
 
-/* Preview Modal Specific */
+/* Preview Modal */
 #preview-modal .image-container {
     position: relative;
     display: inline-block;
@@ -328,39 +312,6 @@
     color: #333;
 }
 
-/* Download Modal (Dynamic) Specific */
-#download-modal-content {
-    max-width: 500px;
-}
-
-#download-modal-content h3 {
-    margin: 0 0 15px;
-    font-size: 18px;
-}
-
-#download-modal-content label {
-    display: block;
-    margin-bottom: 5px;
-    font-size: 14px;
-}
-
-#download-modal-content input,
-#download-modal-content select {
-    width: 100%;
-    padding: 5px;
-    margin-bottom: 10px;
-    box-sizing: border-box;
-}
-
-#file-info {
-    margin-bottom: 15px;
-}
-
-#file-info p {
-    margin: 5px 0;
-    font-size: 14px;
-}
-
 /* Loading Indicator */
 #loading-indicator {
     position: fixed;
@@ -374,10 +325,21 @@
     z-index: 1003;
 }
 
-/* Responsive Design */
+/* Hide on Mobile */
+.hide-mobile {
+    display: block;
+}
+
+@media (max-width: 768px) {
+    .hide-mobile {
+        display: none;
+    }
+}
+
+/* Mobile Layout */
 @media (max-width: 768px) {
     .editor {
-        padding: 5px;
+        padding: 0;
         height: 100vh;
         overflow: hidden;
     }
@@ -385,15 +347,15 @@
     #content {
         flex-direction: column;
         align-items: center;
-        gap: 10px;
         height: 100%;
+        gap: 0;
     }
 
     #image-container {
         width: 100%;
-        padding-right: 0;
-        height: calc(100vh - 200px);
-        position: fixed;
+        padding: 0;
+        height: calc(100vh - 220px); /* Adjust based on controls height */
+        position: relative;
         top: 0;
         left: 0;
         display: flex;
@@ -405,7 +367,8 @@
     }
 
     #canvas {
-        max-height: calc(100vh - 200px);
+        max-width: 100%;
+        max-height: calc(100vh - 220px);
         width: 100%;
         height: auto;
         object-fit: contain;
@@ -416,7 +379,7 @@
         bottom: 0;
         left: 0;
         width: 100%;
-        height: 200px;
+        height: 220px; /* Fixed height for buttons and sliders */
         min-width: 0;
         z-index: 20;
         background-color: rgba(255, 255, 255, 0.95);
@@ -424,44 +387,34 @@
         overflow: hidden;
     }
 
-    #controls-container-2 {
-        position: relative;
-        width: 100%;
+    #button-bar {
         display: flex;
         flex-direction: row;
-        justify-content: center;
-        align-items: center;
-        gap: 10px;
-        padding: 5px;
         flex-wrap: nowrap;
+        overflow-x: auto;
+        justify-content: flex-start;
+        padding: 5px;
+        gap: 5px;
+        margin-bottom: 5px;
     }
 
-    #controls-container-2 button {
-        padding: 8px 16px;
-        font-size: 14px;
-        min-width: 80px;
-        min-height: 40px;
+    #button-bar button {
+        padding: 6px 10px;
+        font-size: 12px;
+        max-width: 90px;
+        min-height: 36px;
         flex: 0 0 auto;
     }
 
     #sliders-wrapper {
-        height: calc(100% - 60px);
-        overflow-y: scroll; /* Changed to scroll for explicit behavior */
-        -webkit-overflow-scrolling: touch; /* Smooth scrolling for iOS */
-        padding: 10px;
+        height: calc(100% - 50px); /* Remaining space after buttons */
+        overflow-y: auto;
+        padding: 5px 10px;
         box-sizing: border-box;
-        -webkit-user-select: none; /* Prevent text selection */
-        user-select: none;
-        touch-action: pan-y; /* Allow vertical scrolling */
-    }
-
-    .controls {
-        padding: 0;
+        touch-action: pan-y;
     }
 
     .controls div {
-        flex-direction: row;
-        align-items: center;
         margin-bottom: 8px;
     }
 
@@ -471,14 +424,13 @@
     }
 
     .controls input[type="range"] {
-        flex: 1;
         max-width: none;
         margin: 0 5px;
-        touch-action: pan-y; /* Ensure sliders don’t block scrolling */
     }
 
     .controls span {
-        display: none;
+        flex: 0 0 30px;
+        font-size: 12px;
     }
 
     .controls h3 {
@@ -486,28 +438,7 @@
         font-size: 14px;
     }
 
-    .action-buttons {
-        margin-bottom: 5px;
-        display: flex;
-        flex-direction: row;
-        justify-content: center;
-        align-items: center;
-        gap: 5px;
-        flex-wrap: wrap;
-        width: 100%;
-    }
-
-    .action-buttons button,
-    #upload-new-photo,
-    #toggle-original {
-        padding: 6px 10px;
-        font-size: 12px;
-        max-width: 90px;
-        min-height: 36px;
-        flex: 0 0 auto;
-    }
-
-    /* Modal Responsiveness */
+    /* Modal Adjustments */
     .modal-content {
         width: 90%;
         margin: 5% auto;
@@ -540,39 +471,21 @@
         gap: 5px;
     }
 
-    .crop-control-group {
-        flex-direction: row;
-        align-items: center;
-    }
-
     .crop-control-group label {
         flex: 0 0 70px;
-        margin-bottom: 0;
         font-size: 12px;
     }
 
     .crop-control-group input[type="range"] {
-        width: 100%;
         margin: 0 5px;
     }
 
     .crop-control-group span {
         flex: 0 0 35px;
-        margin-top: 0;
         font-size: 12px;
-    }
-
-    .crop-button-group {
-        flex-direction: row;
-        gap: 5px;
     }
 
     .crop-button-group button {
         padding: 6px;
-        width: 100%;
-    }
-
-    #download-modal-content {
-        max-width: 90%;
     }
 }
