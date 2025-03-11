@@ -1225,9 +1225,10 @@ function debounce(func, wait) {
         timeout = setTimeout(later, wait);
     };
 }
-canvas.addEventListener('click', () => {
-    // Check if the viewport width is greater than 768px (desktop view)
-    if (window.innerWidth > 768) {
+canvas.addEventListener('click', (e) => {
+    // Check if the device is not an iOS device (iPhone, iPad, iPod)
+    const isNotIOS = !/iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (isNotIOS) {
         try {
             const controlsContainer = document.querySelector('.controls');
             const modalControls = document.getElementById('modal-controls');
@@ -1253,7 +1254,15 @@ canvas.addEventListener('click', () => {
             console.error("Error opening modal:", error);
         }
     } else {
-        console.log("Preview modal disabled in mobile view (width <= 768px)");
+        console.log("Preview modal disabled on iOS devices");
+    }
+});
+
+// Add touchend listener to prevent modal opening on iOS touch
+canvas.addEventListener('touchend', (e) => {
+    if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+        e.preventDefault(); // Prevent click simulation
+        console.log("Touchend intercepted, preview modal disabled on iOS");
     }
 });
 img.onload = function () {
