@@ -323,8 +323,11 @@ function redrawImage(saveState = false) {
         .then(() => applyComplexFilters(fullResCtx, fullResCanvas, noiseSeed, scaleFactor))
         .then(() => {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            if (isShowingOriginal && originalImageData) {
-                ctx.putImageData(originalImageData, 0, 0);
+            if (isShowingOriginal && trueOriginalImage.complete && trueOriginalImage.naturalWidth !== 0) {
+                // Draw the full-resolution original image, scaled to fit the preview canvas
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
+                ctx.drawImage(trueOriginalImage, 0, 0, canvas.width, canvas.height);
             } else {
                 if (fullResCanvas.width === 0 || fullResCanvas.height === 0) {
                     console.error("fullResCanvas dimensions became invalid before draw");
@@ -344,7 +347,7 @@ function redrawImage(saveState = false) {
         .catch(error => {
             console.error('Error in redraw:', error);
             showLoadingIndicator(false);
-            throw error;  
+            throw error;
         });
 }
 function seededRandom(seed) {
@@ -682,9 +685,27 @@ function applyComplexFilters(ctx, canvas, seed = noiseSeed, scaleFactor = 1) {
     });
 }
 toggleOriginalButton.addEventListener('click', () => {
+    if (!originalImageData) {
+        console.error("Original image data not available for toggle");
+        return;
+    }
     isShowingOriginal = !isShowingOriginal;
     toggleOriginalButton.textContent = isShowingOriginal ? 'Editada' : 'Original';
     redrawImage(false);
+    console.log(`Toggled to ${isShowingOriginal ? 'original' : 'edited'}`);
+});
+
+// Add touchend listener for Safari compatibility
+toggleOriginalButton.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    if (!originalImageData) {
+        console.error("Original image data not available for toggle");
+        return;
+    }
+    isShowingOriginal = !isShowingOriginal;
+    toggleOriginalButton.textContent = isShowingOriginal ? 'Editada' : 'Original';
+    redrawImage(false);
+    console.log(`Touch toggled to ${isShowingOriginal ? 'original' : 'edited'}`);
 });
 function setupCropControls(unfilteredCanvas) {
     const cropControls = document.getElementById('crop-controls');
@@ -815,12 +836,18 @@ function setupCropControls(unfilteredCanvas) {
             0, 0, cropWidth, cropHeight
         );
         img.src = tempCanvas.toDataURL('image/png');
-        originalUploadedImage.src = tempCanvas.toDataURL('image/png');
-        originalWidth = tempCanvas.width;
-        originalHeight = tempCanvas.height;
-        fullResCanvas.width = originalWidth;
-        fullResCanvas.height = originalHeight;
-        fullResCtx.drawImage(tempCanvas, 0, 0, originalWidth, originalHeight);
+    originalUploadedImage.src = tempCanvas.toDataURL('image/png');
+    originalWidth = tempCanvas.width;
+    originalHeight = tempCanvas.height;
+    fullResCanvas.width = originalWidth;
+    fullResCanvas.height = originalHeight;
+    fullResCtx.drawImage(tempCanvas, 0, 0, originalWidth, originalHeight);
+    const previewTempCanvas = document.createElement('canvas');
+    previewTempCanvas.width = canvas.width;
+    previewTempCanvas.height = canvas.height;
+    const previewTempCtx = previewTempCanvas.getContext('2d');
+    previewTempCtx.drawImage(tempCanvas, 0, 0, canvas.width, canvas.height);
+    originalImageData = previewTempCtx.getImageData(0, 0, canvas.width, canvas.height);
         initialCropRect = { x: cropX, y: cropY, width: cropWidth, height: cropHeight };
         initialRotation = rotation;
         console.log("Initial crop state saved (original coords):", initialCropRect, "rotation:", initialRotation);
@@ -1310,6 +1337,7 @@ img.onload = function () {
     const tempCtx = tempCanvas.getContext('2d');
     tempCtx.drawImage(img, 0, 0, previewWidth, previewHeight);
     originalImageData = tempCtx.getImageData(0, 0, previewWidth, previewHeight);
+    console.log("originalImageData initialized:", originalImageData.width, "x", originalImageData.height);
     if (!originalUploadedImage.src || originalUploadedImage.src === "") {
         originalUploadedImage.src = img.src;
         console.log("originalUploadedImage set to:", originalUploadedImage.src.length, "bytes");
