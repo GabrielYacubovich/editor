@@ -214,6 +214,10 @@ uploadNewPhotoButton.addEventListener('click', (e) => {
     e.preventDefault();
     triggerFileUpload();
 });
+uploadNewPhotoButton.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    triggerFileUpload();
+});
 function updateControlIndicators() {
     const controlValues = [
         'brightness', 'contrast', 'grayscale', 'vibrance', 'highlights', 'shadows', 
@@ -684,23 +688,36 @@ toggleOriginalButton.addEventListener('click', () => {
 });
 function setupCropControls(unfilteredCanvas) {
     const cropControls = document.getElementById('crop-controls');
-    cropControls.innerHTML = '';
-
-    const rotationGroup = document.createElement('div');
-    rotationGroup.className = 'crop-control-group';
-    rotationGroup.innerHTML = `
-        <label for="rotation">Rotación:</label>
-        <input type="range" id="rotation" min="-180" max="180" value="${rotation}">
-        <span id="rotation-value">${rotation}°</span>
+    cropControls.innerHTML = `
+        <div class="crop-control-group">
+            <label for="rotation">Rotación:</label>
+            <input type="range" id="rotation" min="-180" max="180" value="${rotation}">
+            <span id="rotation-value">${rotation}°</span>
+        </div>
+        <div class="crop-button-group">
+            <button id="crop-restore">Restaurar</button>
+            <button id="crop-confirm">Continuar</button>
+            <button id="crop-skip">Omitir</button>
+        </div>
+        <div class="crop-lock-group">
+            <input type="checkbox" id="lock-aspect" ${lockAspectRatio ? 'checked' : ''}>
+            <label for="lock-aspect">Bloquear proporción</label>
+        </div>
     `;
-    cropControls.appendChild(rotationGroup);
+
     const rotationInput = document.getElementById('rotation');
     const rotationValue = document.getElementById('rotation-value');
+    const restoreBtn = document.getElementById('crop-restore');
+    const confirmBtn = document.getElementById('crop-confirm');
+    const skipBtn = document.getElementById('crop-skip');
+    const lockCheckbox = document.getElementById('lock-aspect');
+
     rotationInput.addEventListener('input', (e) => {
         rotation = parseInt(e.target.value);
         rotationValue.textContent = `${rotation}°`;
         drawCropOverlay();
     });
+
     rotationValue.addEventListener('click', () => {
         const newValue = prompt('Ingrese el ángulo de rotación (-180 a 180):', rotation);
         if (newValue !== null) {
@@ -714,32 +731,14 @@ function setupCropControls(unfilteredCanvas) {
         }
     });
 
-    const buttonGroup = document.createElement('div');
-    buttonGroup.className = 'crop-button-group';
-    buttonGroup.innerHTML = `
-        <button id="crop-restore">Restaurar</button>
-        <button id="crop-confirm">Confirmar</button>
-        <button id="crop-skip">Omitir</button>
-    `;
-    cropControls.appendChild(buttonGroup);
-
-    const restoreBtn = document.getElementById('crop-restore');
-    const confirmBtn = document.getElementById('crop-confirm');
-    const skipBtn = document.getElementById('crop-skip');
-
     restoreBtn.addEventListener('click', () => {
-        // Reset rotation to 0
         rotation = 0;
         rotationInput.value = 0;
         rotationValue.textContent = '0°';
-
-        // Use the true original image as the source
         if (!trueOriginalImage.src || trueOriginalImage.width === 0) {
             console.error("No true original image available for restore");
             return;
         }
-
-        // Reset canvas to full original dimensions, constrained by window size
         const maxCanvasWidth = window.innerWidth - 100;
         const maxCanvasHeight = window.innerHeight - 250;
         let width = trueOriginalImage.width;
@@ -756,43 +755,26 @@ function setupCropControls(unfilteredCanvas) {
         }
         cropCanvas.width = width;
         cropCanvas.height = height;
-
-        // Reset crop rectangle to full size of the original image
-        cropRect = {
-            x: 0,
-            y: 0,
-            width: cropCanvas.width,
-            height: cropCanvas.height
-        };
-
-        // Prepare the filtered preview from the true original image
+        cropRect = { x: 0, y: 0, width: cropCanvas.width, height: cropCanvas.height };
         const tempCanvas = document.createElement('canvas');
         tempCanvas.width = trueOriginalImage.width;
         tempCanvas.height = trueOriginalImage.height;
         const tempCtx = tempCanvas.getContext('2d');
         tempCtx.drawImage(trueOriginalImage, 0, 0);
-
-        // Apply current filters for preview
         applyBasicFiltersManually(tempCtx, tempCanvas, settings);
         applyAdvancedFilters(tempCtx, tempCanvas, noiseSeed, 1)
             .then(() => applyGlitchEffects(tempCtx, tempCanvas, noiseSeed, 1))
             .then(() => applyComplexFilters(tempCtx, tempCanvas, noiseSeed, 1))
             .then(() => {
                 cropImage.src = tempCanvas.toDataURL('image/png');
-                cropImage.onload = () => {
-                    drawCropOverlay();
-                };
-                if (cropImage.complete && cropImage.naturalWidth !== 0) {
-                    cropImage.onload();
-                }
+                cropImage.onload = () => drawCropOverlay();
+                if (cropImage.complete && cropImage.naturalWidth !== 0) cropImage.onload();
             })
-            .catch(err => {
-                console.error("Error applying filters during restore:", err);
-            });
+            .catch(err => console.error("Error applying filters during restore:", err));
     });
 
-    // Confirm button (unchanged for now, but we'll address quality later)
-    confirmBtn.addEventListener('click', () => {
+    confirmBtn.addEventListener('click', (e) => {
+        e.preventDefault(); // Prevent default behavior
         let origWidth = cropImage.width;
         let origHeight = cropImage.height;
         if (origWidth === 0 || origHeight === 0) {
@@ -800,14 +782,11 @@ function setupCropControls(unfilteredCanvas) {
             closeModal(cropModal);
             return;
         }
-    
         const angleRad = rotation * Math.PI / 180;
         const cosA = Math.abs(Math.cos(angleRad));
         const sinA = Math.abs(Math.sin(angleRad));
         const fullRotatedWidth = Math.ceil(origWidth * cosA + origHeight * sinA);
         const fullRotatedHeight = Math.ceil(origWidth * sinA + origHeight * cosA);
-    
-        // Create a canvas for the full rotated image (unscaled)
         const fullRotatedCanvas = document.createElement('canvas');
         fullRotatedCanvas.width = fullRotatedWidth;
         fullRotatedCanvas.height = fullRotatedHeight;
@@ -817,17 +796,13 @@ function setupCropControls(unfilteredCanvas) {
         fullRotatedCtx.translate(fullRotatedWidth / 2, fullRotatedHeight / 2);
         fullRotatedCtx.rotate(angleRad);
         fullRotatedCtx.translate(-origWidth / 2, -origHeight / 2);
-        const sourceImage = unfilteredCanvas || trueOriginalImage; // Use true original for quality
+        const sourceImage = unfilteredCanvas || trueOriginalImage;
         fullRotatedCtx.drawImage(sourceImage, 0, 0, origWidth, origHeight);
-    
-        // Map crop coordinates from scaled preview to full size
         const scaleFactor = parseFloat(cropCanvas.dataset.scaleFactor) || 1;
         const cropX = cropRect.x / scaleFactor;
         const cropY = cropRect.y / scaleFactor;
         const cropWidth = Math.round(cropRect.width / scaleFactor);
         const cropHeight = Math.round(cropRect.height / scaleFactor);
-    
-        // Apply crop to the full-sized rotated image
         const tempCanvas = document.createElement('canvas');
         tempCanvas.width = cropWidth;
         tempCanvas.height = cropHeight;
@@ -839,25 +814,16 @@ function setupCropControls(unfilteredCanvas) {
             cropX, cropY, cropWidth, cropHeight,
             0, 0, cropWidth, cropHeight
         );
-    
-        // Update the working images
         img.src = tempCanvas.toDataURL('image/png');
-        originalUploadedImage.src = tempCanvas.toDataURL('image/png'); // Working copy, not true original
+        originalUploadedImage.src = tempCanvas.toDataURL('image/png');
         originalWidth = tempCanvas.width;
         originalHeight = tempCanvas.height;
         fullResCanvas.width = originalWidth;
         fullResCanvas.height = originalHeight;
         fullResCtx.drawImage(tempCanvas, 0, 0, originalWidth, originalHeight);
-    
-        initialCropRect = {
-            x: cropX,
-            y: cropY,
-            width: cropWidth,
-            height: cropHeight
-        };
+        initialCropRect = { x: cropX, y: cropY, width: cropWidth, height: cropHeight };
         initialRotation = rotation;
         console.log("Initial crop state saved (original coords):", initialCropRect, "rotation:", initialRotation);
-    
         const loadImage = new Promise((resolve) => {
             if (img.complete && img.naturalWidth !== 0) resolve();
             else {
@@ -865,7 +831,6 @@ function setupCropControls(unfilteredCanvas) {
                 img.onerror = () => resolve();
             }
         });
-    
         loadImage.then(() => {
             const maxDisplayWidth = Math.min(1920, window.innerWidth - 100);
             const maxDisplayHeight = Math.min(1080, window.innerHeight - 250);
@@ -896,19 +861,23 @@ function setupCropControls(unfilteredCanvas) {
             }
             canvas.width = Math.round(previewWidth);
             canvas.height = Math.round(previewHeight);
-    
             redrawImage(true)
                 .then(() => {
                     originalFullResImage.src = fullResCanvas.toDataURL('image/png');
                     console.log("Redraw completed, originalFullResImage updated");
                 })
-                .catch(err => {
-                    console.error("Redraw failed:", err);
-                })
+                .catch(err => console.error("Redraw failed:", err))
                 .finally(() => {
-                    closeModal(cropModal);
+                    closeModal(cropModal); // Ensure modal closes
+                    uploadNewPhotoButton.style.display = 'block'; // Ensure button visibility
                 });
         });
+    });
+
+    // Add touch event for confirm button
+    confirmBtn.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        confirmBtn.click(); // Trigger click event
     });
 
     skipBtn.addEventListener('click', () => {
@@ -954,9 +923,7 @@ function setupCropControls(unfilteredCanvas) {
                     originalFullResImage.src = fullResCanvas.toDataURL('image/png');
                     console.log("Redraw completed successfully after skip");
                 })
-                .catch(err => {
-                    console.error("Redraw failed on skip:", err);
-                });
+                .catch(err => console.error("Redraw failed on skip:", err));
         };
         if (img.complete && img.naturalWidth !== 0) {
             proceedWithRedraw();
@@ -969,14 +936,6 @@ function setupCropControls(unfilteredCanvas) {
         }
     });
 
-    const lockGroup = document.createElement('div');
-    lockGroup.className = 'crop-lock-group';
-    lockGroup.innerHTML = `
-        <input type="checkbox" id="lock-aspect" ${lockAspectRatio ? 'checked' : ''}>
-        <label for="lock-aspect">Bloquear proporción</label>
-    `;
-    cropControls.appendChild(lockGroup);
-    const lockCheckbox = document.getElementById('lock-aspect');
     lockCheckbox.addEventListener('change', (e) => {
         lockAspectRatio = e.target.checked;
         aspectRatio = cropRect.width / cropRect.height;
@@ -1656,12 +1615,21 @@ function addButtonListeners(button, handler) {
 }
 addButtonListeners(undoButton, debouncedUndo);
 addButtonListeners(redoButton, debouncedRedo);
-cropImageButton.addEventListener('click', () => {
+cropImageButton.addEventListener('click', (e) => {
+    e.preventDefault();
     if (!img.src || img.src === "") {
         console.warn("No image loaded to crop");
         return;
     }
-    showCropModal(); 
+    showCropModal();
+});
+cropImageButton.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    if (!img.src || img.src === "") {
+        console.warn("No image loaded to crop");
+        return;
+    }
+    showCropModal();
 });
 restoreButton.addEventListener('click', () => {
     settings = { 
