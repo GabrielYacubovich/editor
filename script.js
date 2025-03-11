@@ -1456,11 +1456,13 @@ downloadButton.addEventListener('click', () => {
     overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
     overlay.style.zIndex = '1001';
     document.body.appendChild(overlay);
+
     const resolutionSelect = document.getElementById('save-resolution-scale');
     const fileTypeSelect = document.getElementById('save-file-type');
     const dimensionsSpan = document.getElementById('dimensions');
     const fileSizeSpan = document.getElementById('file-size');
     const originalDataURL = img.src;
+
     function updateFileInfo() {
         const scale = parseFloat(resolutionSelect.value) / 100;
         const width = Math.round(originalWidth * scale);
@@ -1475,7 +1477,7 @@ downloadButton.addEventListener('click', () => {
         tempCtx.imageSmoothingQuality = 'high';
         tempCtx.drawImage(fullResCanvas, 0, 0, width, height);
         const fileType = fileTypeSelect.value;
-        const quality = fileType === 'image/png' ? undefined : 1.0; 
+        const quality = fileType === 'image/png' ? undefined : 1.0;
         tempCanvas.toBlob((blob) => {
             if (blob) {
                 const sizeKB = Math.round(blob.size / 1024);
@@ -1490,7 +1492,11 @@ downloadButton.addEventListener('click', () => {
     updateFileInfo();
     resolutionSelect.addEventListener('change', updateFileInfo);
     fileTypeSelect.addEventListener('change', updateFileInfo);
-    document.getElementById('save-confirm').addEventListener('click', () => {
+
+    const saveConfirmBtn = document.getElementById('save-confirm');
+    const saveCancelBtn = document.getElementById('save-cancel');
+
+    saveConfirmBtn.addEventListener('click', () => {
         console.log("Save confirm clicked");
         const fileName = document.getElementById('save-file-name').value.trim() || 'nueva-imagen';
         const fileType = fileTypeSelect.value;
@@ -1518,14 +1524,14 @@ downloadButton.addEventListener('click', () => {
         redrawImage(false).then(() => {
             console.log("Image redrawn for download");
             tempCtx.drawImage(fullResCanvas, 0, 0, tempCanvas.width, tempCanvas.height);
-            const quality = fileType === 'image/png' ? undefined : 1.0; // Max quality for JPEG/WebP
+            const quality = fileType === 'image/png' ? undefined : 1.0;
             tempCanvas.toBlob((blob) => {
                 const link = document.createElement('a');
                 link.download = `${sanitizedFileName}-${Math.round(scale * 100)}%.${extension}`;
                 link.href = URL.createObjectURL(blob);
                 console.log(`Download link: ${link.download}`);
                 link.click();
-                URL.revokeObjectURL(link.href); // Clean up
+                URL.revokeObjectURL(link.href);
                 showLoadingIndicator(false);
                 document.body.removeChild(popup);
                 document.body.removeChild(overlay);
@@ -1538,11 +1544,27 @@ downloadButton.addEventListener('click', () => {
             document.body.removeChild(overlay);
         });
     });
-    document.getElementById('save-cancel').addEventListener('click', () => {
+
+    // Add touchend listener for Save button
+    saveConfirmBtn.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        saveConfirmBtn.click();
+    });
+
+    saveCancelBtn.addEventListener('click', () => {
         console.log("Save cancel clicked");
         document.body.removeChild(popup);
         document.body.removeChild(overlay);
     });
+
+    // Add touchend listener for Cancel button
+    saveCancelBtn.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        console.log("Save cancel touched");
+        document.body.removeChild(popup);
+        document.body.removeChild(overlay);
+    });
+
     overlay.addEventListener('click', () => {
         console.log("Overlay clicked to close");
         document.body.removeChild(popup);
