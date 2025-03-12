@@ -391,6 +391,7 @@ body {
         width: 100%;
         height: auto;
         object-fit: contain;
+        padding: 5px;
     }
 
     #controls-container {
