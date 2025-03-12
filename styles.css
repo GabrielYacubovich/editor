@@ -80,17 +80,17 @@ body {
 }
 
 #button-bar button {
-    padding: 8px 15px;
+    padding: 4px 12px;
     background-color: #000;
     color: white;
     border: none;
-    border-radius: 5px;
+    border-radius: 19px;
     cursor: pointer;
     width: 100%;
     max-width: 100px;
-    min-height: 40px;
-    font-size: 13px;
-    font-weight: bold;
+    max-height: 20px;
+    min-height: 35px;
+    font-size: 12px;
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
 }
@@ -114,7 +114,7 @@ body {
 .controls div {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: center;
     margin-bottom: 5px;
     width: 100%;
 }
@@ -127,7 +127,7 @@ body {
 
 .controls input[type="range"] {
     flex: 1;
-    max-width: 140px;
+    max-width: 190px;
     margin: 0 5px;
     touch-action: pan-y;
 }
@@ -503,6 +503,11 @@ body {
         padding: 6px;
         font-size: 12px;
         min-width: 70px;
+    }
+    .controls {
+        max-height: 50vh; /* Adjust height as needed */
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
     }
     
 
