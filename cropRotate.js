@@ -24,11 +24,7 @@ export class CropRotate {
         this.maxCanvasWidth = 0;
         this.maxCanvasHeight = 0;
         this.fixedScale = 0;
-        this.resolutionScale = 0.25; // 1/4 resolution for overlay canvas
-
-        // Create an offscreen canvas for the low-resolution overlay
-        this.overlayCanvas = document.createElement('canvas');
-        this.overlayCtx = this.overlayCanvas.getContext('2d');
+        this.gridType = 'cross'; // Default grid type
 
         this.setupEventListeners();
     }
@@ -53,7 +49,6 @@ export class CropRotate {
 
             this.fixedScale = Math.min((this.maxCanvasWidth - buffer) / maxRotatedSize, (this.maxCanvasHeight - buffer) / maxRotatedSize, 1);
 
-            // Full resolution for both cropCanvas and effectsCanvas
             const fullWidth = Math.round(maxRotatedSize * this.fixedScale);
             const fullHeight = Math.round(maxRotatedSize * this.fixedScale);
 
@@ -66,10 +61,6 @@ export class CropRotate {
             this.effectsCanvas.width = fullWidth;
             this.effectsCanvas.height = fullHeight;
             this.effectsProcessor.setImage(this.cropImage);
-
-            // Low resolution for overlay canvas
-            this.overlayCanvas.width = Math.round(fullWidth * this.resolutionScale);
-            this.overlayCanvas.height = Math.round(fullHeight * this.resolutionScale);
 
             const boundsWithRotation = this.getRotatedImageBounds(this.originalWidth, this.originalHeight, this.rotation, this.fixedScale);
             const offsetX = (fullWidth - boundsWithRotation.width) / 2;
@@ -113,6 +104,7 @@ export class CropRotate {
 
             this.lockAspectRatio = false;
             this.previousRotation = this.rotation;
+            this.gridType = 'cross'; // Set default grid type
             this.setupCropControls();
             this.drawCropOverlay();
         };
@@ -157,6 +149,30 @@ export class CropRotate {
                 <input type="range" id="cropRotation" min="-180" max="180" value="${this.rotation}">
                 <span id="rotation-value" style="cursor: pointer;">${this.rotation}°</span>
             </div>
+            <div class="crop-control-group">
+                <label for="aspect-ratio">Aspect Ratio:</label>
+                <select id="aspect-ratio">
+                    <option value="free">Free</option>
+                    <option value="1:1">1:1 (Square)</option>
+                    <option value="4:3">4:3</option>
+                    <option value="3:2">3:2</option>
+                    <option value="16:9">16:9</option>
+                    <option value="9:16">9:16</option>
+                    <option value="5:4">5:4</option>
+                    <option value="4:5">4:5</option>
+                </select>
+            </div>
+            <div class="crop-control-group">
+                <label for="grid-type">Grid Overlay:</label>
+                <select id="grid-type">
+                    <option value="none">None</option>
+                    <option value="cross" selected>Cross</option>
+                    <option value="rule-of-thirds">Rule of Thirds</option>
+                    <option value="golden-ratio">Golden Ratio</option>
+                    <option value="grid-3x3">3x3 Grid</option>
+                    <option value="grid-4x4">4x4 Grid</option>
+                </select>
+            </div>
             <div class="crop-button-group">
                 <button id="crop-restore">Reset</button>
                 <button id="crop-confirm">Apply</button>
@@ -170,6 +186,8 @@ export class CropRotate {
 
         const rotationInput = document.getElementById('cropRotation');
         const rotationValue = document.getElementById('rotation-value');
+        const aspectRatioSelect = document.getElementById('aspect-ratio');
+        const gridTypeSelect = document.getElementById('grid-type');
         const restoreBtn = document.getElementById('crop-restore');
         const confirmBtn = document.getElementById('crop-confirm');
         const skipBtn = document.getElementById('crop-skip');
@@ -219,12 +237,26 @@ export class CropRotate {
             });
         });
 
+        aspectRatioSelect.addEventListener('change', (e) => {
+            const value = e.target.value;
+            this.applyAspectRatio(value);
+            this.drawCropOverlay();
+        });
+
+        gridTypeSelect.addEventListener('change', (e) => {
+            this.gridType = e.target.value;
+            this.drawCropOverlay();
+        });
+
         restoreBtn.addEventListener('click', () => {
             this.rotation = 0;
             rotationInput.value = 0;
             rotationValue.textContent = '0°';
             this.lockAspectRatio = false;
             lockCheckbox.checked = false;
+            aspectRatioSelect.value = 'free';
+            this.gridType = 'cross';
+            gridTypeSelect.value = 'cross';
 
             const buffer = 10;
             const maxDimension = Math.max(this.originalWidth, this.originalHeight);
@@ -242,9 +274,6 @@ export class CropRotate {
             this.effectsCanvas.width = fullWidth;
             this.effectsCanvas.height = fullHeight;
             this.effectsProcessor.setImage(this.cropImage);
-
-            this.overlayCanvas.width = Math.round(fullWidth * this.resolutionScale);
-            this.overlayCanvas.height = Math.round(fullHeight * this.resolutionScale);
 
             const initialBounds = this.getRotatedImageBounds(this.originalWidth, this.originalHeight, 0, this.fixedScale);
             this.cropRect = {
@@ -266,11 +295,53 @@ export class CropRotate {
 
         lockCheckbox.addEventListener('change', (e) => {
             this.lockAspectRatio = e.target.checked;
-            this.aspectRatio = this.cropRect.width / this.cropRect.height;
+            if (this.lockAspectRatio && aspectRatioSelect.value === 'free') {
+                this.aspectRatio = this.cropRect.width / this.cropRect.height;
+            }
         });
 
         const closeBtn = this.cropModal.querySelector('.modal-close-btn');
         closeBtn.addEventListener('click', () => this.closeModal());
+    }
+
+    applyAspectRatio(ratioStr) {
+        const rotatedBounds = this.getRotatedImageBounds(this.originalWidth, this.originalHeight, this.rotation, this.fixedScale);
+        let newWidth, newHeight;
+
+        if (ratioStr === 'free') {
+            this.lockAspectRatio = false;
+            document.getElementById('lock-aspect').checked = false;
+            return;
+        }
+
+        this.lockAspectRatio = true;
+        document.getElementById('lock-aspect').checked = true;
+
+        const [widthRatio, heightRatio] = ratioStr.split(':').map(Number);
+        this.aspectRatio = widthRatio / heightRatio;
+
+        const currentCenterX = this.cropRect.x + this.cropRect.width / 2;
+        const currentCenterY = this.cropRect.y + this.cropRect.height / 2;
+
+        if (this.cropRect.width / this.cropRect.height > this.aspectRatio) {
+            newWidth = this.cropRect.height * this.aspectRatio;
+            newHeight = this.cropRect.height;
+        } else {
+            newWidth = this.cropRect.width;
+            newHeight = this.cropRect.width / this.aspectRatio;
+        }
+
+        newWidth = this.clamp(newWidth, 10, rotatedBounds.width);
+        newHeight = this.clamp(newHeight, 10, rotatedBounds.height);
+
+        this.cropRect.width = newWidth;
+        this.cropRect.height = newHeight;
+
+        this.cropRect.x = currentCenterX - newWidth / 2;
+        this.cropRect.y = currentCenterY - newHeight / 2;
+
+        this.cropRect.x = this.clamp(this.cropRect.x, rotatedBounds.x, rotatedBounds.x + rotatedBounds.width - newWidth);
+        this.cropRect.y = this.clamp(this.cropRect.y, rotatedBounds.y, rotatedBounds.y + rotatedBounds.height - newHeight);
     }
 
     applyCrop() {
@@ -388,39 +459,97 @@ export class CropRotate {
         this.cropRect.width = this.clamp(this.cropRect.width, 10, scaledRotatedWidth - (this.cropRect.x - offsetX));
         this.cropRect.height = this.clamp(this.cropRect.height, 10, scaledRotatedHeight - (this.cropRect.y - offsetY));
 
-        // Clear the main crop canvas
         this.cropCtx.clearRect(0, 0, this.cropCanvas.width, this.cropCanvas.height);
 
-        // Render WebGL at full resolution
         this.renderEffectsWithTransform(offsetX, offsetY, scaledRotatedWidth, scaledRotatedHeight, angleRad, scale);
         this.cropCtx.drawImage(this.effectsCanvas, 0, 0);
 
-        // Draw overlay on the low-resolution overlay canvas
-        this.overlayCtx.clearRect(0, 0, this.overlayCanvas.width, this.overlayCanvas.height);
+        // Draw overlay
+        this.cropCtx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        this.cropCtx.fillRect(0, 0, this.cropCanvas.width, this.cropRect.y);
+        this.cropCtx.fillRect(0, this.cropRect.y + this.cropRect.height, this.cropCanvas.width, this.cropCanvas.height - (this.cropRect.y + this.cropRect.height));
+        this.cropCtx.fillRect(0, this.cropRect.y, this.cropRect.x, this.cropRect.height);
+        this.cropCtx.fillRect(this.cropRect.x + this.cropRect.width, this.cropRect.y, this.cropCanvas.width - (this.cropRect.x + this.cropRect.width), this.cropRect.height);
 
-        const overlayRect = {
-            x: this.cropRect.x * this.resolutionScale,
-            y: this.cropRect.y * this.resolutionScale,
-            width: this.cropRect.width * this.resolutionScale,
-            height: this.cropRect.height * this.resolutionScale
-        };
+        // Draw crop rectangle
+        this.cropCtx.strokeStyle = '#fff';
+        this.cropCtx.lineWidth = 2;
+        this.cropCtx.setLineDash([5, 5]);
+        this.cropCtx.strokeRect(this.cropRect.x, this.cropRect.y, this.cropRect.width, this.cropRect.height);
+        this.cropCtx.setLineDash([]);
 
-        this.overlayCtx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-        this.overlayCtx.fillRect(0, 0, this.overlayCanvas.width, overlayRect.y);
-        this.overlayCtx.fillRect(0, overlayRect.y + overlayRect.height, this.overlayCanvas.width, this.overlayCanvas.height - (overlayRect.y + overlayRect.height));
-        this.overlayCtx.fillRect(0, overlayRect.y, overlayRect.x, overlayRect.height);
-        this.overlayCtx.fillRect(overlayRect.x + overlayRect.width, overlayRect.y, this.overlayCanvas.width - (overlayRect.x + overlayRect.width), overlayRect.height);
-
-        this.overlayCtx.strokeStyle = '#fff';
-        this.overlayCtx.lineWidth = 2 * this.resolutionScale;
-        this.overlayCtx.setLineDash([5 * this.resolutionScale, 5 * this.resolutionScale]);
-        this.overlayCtx.strokeRect(overlayRect.x, overlayRect.y, overlayRect.width, overlayRect.height);
-        this.overlayCtx.setLineDash([]);
-
-        // Draw the overlay onto the main canvas at full resolution
-        this.cropCtx.drawImage(this.overlayCanvas, 0, 0, this.overlayCanvas.width, this.overlayCanvas.height, 0, 0, this.cropCanvas.width, this.cropCanvas.height);
+        // Draw grid
+        this.drawGrid();
 
         this.previousRotation = this.rotation;
+    }
+
+    drawGrid() {
+        this.cropCtx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+        this.cropCtx.lineWidth = 1;
+
+        switch (this.gridType) {
+            case 'none':
+                break;
+            case 'cross':
+                this.cropCtx.beginPath();
+                this.cropCtx.moveTo(this.cropRect.x + this.cropRect.width / 2, this.cropRect.y);
+                this.cropCtx.lineTo(this.cropRect.x + this.cropRect.width / 2, this.cropRect.y + this.cropRect.height);
+                this.cropCtx.moveTo(this.cropRect.x, this.cropRect.y + this.cropRect.height / 2);
+                this.cropCtx.lineTo(this.cropRect.x + this.cropRect.width, this.cropRect.y + this.cropRect.height / 2);
+                this.cropCtx.stroke();
+                break;
+            case 'rule-of-thirds':
+                this.cropCtx.beginPath();
+                this.cropCtx.moveTo(this.cropRect.x + this.cropRect.width / 3, this.cropRect.y);
+                this.cropCtx.lineTo(this.cropRect.x + this.cropRect.width / 3, this.cropRect.y + this.cropRect.height);
+                this.cropCtx.moveTo(this.cropRect.x + 2 * this.cropRect.width / 3, this.cropRect.y);
+                this.cropCtx.lineTo(this.cropRect.x + 2 * this.cropRect.width / 3, this.cropRect.y + this.cropRect.height);
+                this.cropCtx.moveTo(this.cropRect.x, this.cropRect.y + this.cropRect.height / 3);
+                this.cropCtx.lineTo(this.cropRect.x + this.cropRect.width, this.cropRect.y + this.cropRect.height / 3);
+                this.cropCtx.moveTo(this.cropRect.x, this.cropRect.y + 2 * this.cropRect.height / 3);
+                this.cropCtx.lineTo(this.cropRect.x + this.cropRect.width, this.cropRect.y + 2 * this.cropRect.height / 3);
+                this.cropCtx.stroke();
+                break;
+            case 'golden-ratio':
+                const phi = (1 + Math.sqrt(5)) / 2;
+                const goldenWidth1 = this.cropRect.width / (phi + 1);
+                const goldenWidth2 = this.cropRect.width - goldenWidth1;
+                const goldenHeight1 = this.cropRect.height / (phi + 1);
+                const goldenHeight2 = this.cropRect.height - goldenHeight1;
+
+                this.cropCtx.beginPath();
+                this.cropCtx.moveTo(this.cropRect.x + goldenWidth1, this.cropRect.y);
+                this.cropCtx.lineTo(this.cropRect.x + goldenWidth1, this.cropRect.y + this.cropRect.height);
+                this.cropCtx.moveTo(this.cropRect.x + goldenWidth2, this.cropRect.y);
+                this.cropCtx.lineTo(this.cropRect.x + goldenWidth2, this.cropRect.y + this.cropRect.height);
+                this.cropCtx.moveTo(this.cropRect.x, this.cropRect.y + goldenHeight1);
+                this.cropCtx.lineTo(this.cropRect.x + this.cropRect.width, this.cropRect.y + goldenHeight1);
+                this.cropCtx.moveTo(this.cropRect.x, this.cropRect.y + goldenHeight2);
+                this.cropCtx.lineTo(this.cropRect.x + this.cropRect.width, this.cropRect.y + goldenHeight2);
+                this.cropCtx.stroke();
+                break;
+            case 'grid-3x3':
+                this.cropCtx.beginPath();
+                for (let i = 1; i < 3; i++) {
+                    this.cropCtx.moveTo(this.cropRect.x + (i * this.cropRect.width) / 3, this.cropRect.y);
+                    this.cropCtx.lineTo(this.cropRect.x + (i * this.cropRect.width) / 3, this.cropRect.y + this.cropRect.height);
+                    this.cropCtx.moveTo(this.cropRect.x, this.cropRect.y + (i * this.cropRect.height) / 3);
+                    this.cropCtx.lineTo(this.cropRect.x + this.cropRect.width, this.cropRect.y + (i * this.cropRect.height) / 3);
+                }
+                this.cropCtx.stroke();
+                break;
+            case 'grid-4x4':
+                this.cropCtx.beginPath();
+                for (let i = 1; i < 4; i++) {
+                    this.cropCtx.moveTo(this.cropRect.x + (i * this.cropRect.width) / 4, this.cropRect.y);
+                    this.cropCtx.lineTo(this.cropRect.x + (i * this.cropRect.width) / 4, this.cropRect.y + this.cropRect.height);
+                    this.cropCtx.moveTo(this.cropRect.x, this.cropRect.y + (i * this.cropRect.height) / 4);
+                    this.cropCtx.lineTo(this.cropRect.x + this.cropRect.width, this.cropRect.y + (i * this.cropRect.height) / 4);
+                }
+                this.cropCtx.stroke();
+                break;
+        }
     }
 
     renderEffectsWithTransform(offsetX, offsetY, width, height, angleRad, scale) {

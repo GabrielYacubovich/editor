@@ -50,13 +50,14 @@ body {
 
 .controls {
     width: 100%;
+    border-radius: 20px !important;
     background-color: #fff;
-    padding: 15px;
+    padding: 25px 15px 15px 15px ;
     border-radius: 5px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     overflow-y: auto;
     position: relative;
-    height: 100%;
+    height: 88%;
 }
 
 .adjustment-container {
@@ -104,7 +105,7 @@ body {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    font-size: 13px;
+    font-size: 12px;
 }
 
 .adjustments label {
@@ -118,6 +119,7 @@ body {
 button {
     padding: 9px 0;
     margin: 5px 3px;
+    font-size: 12px;
     cursor: pointer;
     background-color: #000;
     color: white;
@@ -135,7 +137,7 @@ button:hover {
 
 /* Range input styles with vendor prefixes */
 input[type="range"] {
-    width: 67%;
+    width: 52%;
     height: 5px;
     accent-color: rgb(0, 0, 0);
     -webkit-appearance: none; /* For Safari and older Chrome */

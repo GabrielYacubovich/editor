@@ -27,14 +27,14 @@ export class State {
             invert: 0.0,
             rgbSplit: 0.0,
             scanLines: 0.0,
-            pixelation: 0.0,
             waveDistortion: 0.0,
             chromaticAberration: 0.0,
             digitalNoise: 0.0,
             blockGlitch: 0.0,
-            lineShift: 0.0,
-            signalInterference: 0.0,
-            ghosting: 0.0
+            ghosting: 0.0,
+            colorBleed: 0.0,
+            fractalDistortion: 0.0,
+            randomTint: 0.0
         };
         this.aspectRatio = 1;
         this.history = [];
@@ -92,14 +92,14 @@ export class State {
             invert: 0.0,
             rgbSplit: 0.0,
             scanLines: 0.0,
-            pixelation: 0.0,
             waveDistortion: 0.0,
             chromaticAberration: 0.0,
             digitalNoise: 0.0,
             blockGlitch: 0.0,
-            lineShift: 0.0,
-            signalInterference: 0.0,
-            ghosting: 0.0
+            ghosting: 0.0,
+            colorBleed: 0.0,
+            fractalDistortion: 0.0,
+            randomTint: 0.0
         };
         this.showOriginal = false;
         this.history = [];
@@ -138,14 +138,14 @@ export class State {
             invert: 0.0,
             rgbSplit: 0.0,
             scanLines: 0.0,
-            pixelation: 0.0,
             waveDistortion: 0.0,
             chromaticAberration: 0.0,
             digitalNoise: 0.0,
             blockGlitch: 0.0,
-            lineShift: 0.0,
-            signalInterference: 0.0,
-            ghosting: 0.0
+            ghosting: 0.0,
+            colorBleed: 0.0,
+            fractalDistortion: 0.0,
+            randomTint: 0.0
         };
         this.aspectRatio = 1;
         this.history = [];

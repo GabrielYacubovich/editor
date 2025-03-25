@@ -12,8 +12,9 @@ export class UI {
             'brightness', 'contrast', 'saturation', 'hue', 'exposure', 'highlights', 'shadows', 
             'blacks', 'whites', 'temperature', 'tint', 'sharpness', 'vignette', 'noise', 
             'clarity', 'opacity', 'gamma', 'sepia', 'vibrance', 'grayscale', 'invert',
-            'rgbSplit', 'scanLines', 'pixelation', 'waveDistortion', 'chromaticAberration',
-            'digitalNoise', 'blockGlitch', 'lineShift', 'signalInterference', 'ghosting'
+            'rgbSplit', 'scanLines', 'waveDistortion', 'chromaticAberration',
+            'digitalNoise', 'blockGlitch', 'ghosting', 'colorBleed', 
+            'fractalDistortion', 'randomTint'
         ];
 
         sliders.forEach(slider => {
@@ -137,14 +138,14 @@ export class UI {
         document.getElementById('invert').value = 0.0;
         document.getElementById('rgbSplit').value = 0.0;
         document.getElementById('scanLines').value = 0.0;
-        document.getElementById('pixelation').value = 0.0;
         document.getElementById('waveDistortion').value = 0.0;
         document.getElementById('chromaticAberration').value = 0.0;
         document.getElementById('digitalNoise').value = 0.0;
         document.getElementById('blockGlitch').value = 0.0;
-        document.getElementById('lineShift').value = 0.0;
-        document.getElementById('signalInterference').value = 0.0;
         document.getElementById('ghosting').value = 0.0;
+        document.getElementById('colorBleed').value = 0.0;
+        document.getElementById('fractalDistortion').value = 0.0;
+        document.getElementById('randomTint').value = 0.0;
     }
 
     updateSlidersFromState() {

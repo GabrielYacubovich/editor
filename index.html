@@ -16,6 +16,7 @@
             <div class="controls">
                 <div class="adjustment-container">
                     <div class="adjustments">
+                        <!-- Existing adjustment controls remain unchanged -->
                         <label>Brightness: 
                             <input type="range" id="brightness" min="0" max="2" step="0.01" value="1">
                         </label>
@@ -85,8 +86,8 @@
                         <label>Scan Lines: 
                             <input type="range" id="scanLines" min="0" max="1" step="0.01" value="0">
                         </label>
-                        <label>Pixelation: 
-                            <input type="range" id="pixelation" min="0" max="0.1" step="0.001" value="0">
+                        <label>Random Tint: 
+                            <input type="range" id="randomTint" min="0" max="1" step="0.01" value="0">
                         </label>
                         <label>Wave Distortion: 
                             <input type="range" id="waveDistortion" min="0" max="1" step="0.01" value="0">
@@ -100,11 +101,11 @@
                         <label>Block Glitch: 
                             <input type="range" id="blockGlitch" min="0" max="1" step="0.01" value="0">
                         </label>
-                        <label>Line Shift: 
-                            <input type="range" id="lineShift" min="0" max="0.1" step="0.001" value="0">
+                        <label>Color Bleed: 
+                            <input type="range" id="colorBleed" min="0" max="0.1" step="0.001" value="0">
                         </label>
-                        <label>Signal Interference: 
-                            <input type="range" id="signalInterference" min="0" max="1" step="0.01" value="0">
+                        <label>Fractal Distortion: 
+                            <input type="range" id="fractalDistortion" min="0" max="1" step="0.01" value="0">
                         </label>
                         <label>Ghosting: 
                             <input type="range" id="ghosting" min="0" max="0.5" step="0.01" value="0">
@@ -114,12 +115,12 @@
                 <div style="padding-top: 20px;" class="buttons">
                     <input type="file" id="image-loader" accept="image/*" style="display: none;">
                     <button id="upload-btn">Upload</button>
-                    <button id="reset">Reset</button>
-                    <button id="export">Export</button>
+                    <button id="crop">Crop</button>  
+                    <button id="reset">Refresh</button>
                     <button id="undo">Undo</button>
                     <button id="redo">Redo</button>
                     <button id="toggle-original">Original</button>
-                    <button id="crop">Crop</button>
+                    <button id="export">Export</button>
                 </div>
             </div>
         </div>
@@ -129,7 +130,46 @@
         <div class="modal-content">
             <span class="modal-close-btn">×</span>
             <canvas id="crop-canvas"></canvas>
-            <div id="crop-controls"></div>
+            <div id="crop-controls">
+                <div class="crop-control-group">
+                    <label for="cropRotation">Rotation:</label>
+                    <input type="range" id="cropRotation" min="-180" max="180" value="0">
+                    <span id="rotation-value">0°</span>
+                </div>
+                <div class="crop-control-group">
+                    <label for="aspect-ratio">Aspect Ratio:</label>
+                    <select id="aspect-ratio">
+                        <option value="free">Free</option>
+                        <option value="1:1">1:1 (Square)</option>
+                        <option value="4:3">4:3</option>
+                        <option value="3:2">3:2</option>
+                        <option value="16:9">16:9</option>
+                        <option value="9:16">9:16</option>
+                        <option value="5:4">5:4</option>
+                        <option value="4:5">4:5</option>
+                    </select>
+                </div>
+                <div class="crop-control-group">
+                    <label for="grid-type">Grid Overlay:</label>
+                    <select id="grid-type">
+                        <option value="none">None</option>
+                        <option value="cross" selected>Cross</option>
+                        <option value="rule-of-thirds">Rule of Thirds</option>
+                        <option value="golden-ratio">Golden Ratio</option>
+                        <option value="grid-3x3">3x3 Grid</option>
+                        <option value="grid-4x4">4x4 Grid</option>
+                    </select>
+                </div>
+                <div class="crop-button-group">
+                    <button id="crop-restore">Reset</button>
+                    <button id="crop-confirm">Apply</button>
+                    <button id="crop-skip">Cancel</button>
+                </div>
+                <div class="crop-lock-group">
+                    <input type="checkbox" id="lock-aspect">
+                    <label for="lock-aspect">Lock Aspect Ratio</label>
+                </div>
+            </div>
         </div>
     </div>
 
