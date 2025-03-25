@@ -8,6 +8,7 @@ body {
     align-items: center;
     height: 80vh;
     overflow: hidden;
+    -webkit-tap-highlight-color: transparent; /* Prevents tap highlight in Safari */
 }
 
 .container {
@@ -42,8 +43,13 @@ body {
     opacity: 0;
 }
 
-.controls {
+.controls-wrapper {
     width: 300px;
+    height: 100%;
+}
+
+.controls {
+    width: 100%;
     background-color: #fff;
     padding: 15px;
     border-radius: 5px;
@@ -61,6 +67,7 @@ body {
     border-radius: 5px;
     margin: 0 4px;
     background: #f8f8f8;
+    -webkit-overflow-scrolling: touch; /* Smooth scrolling in Safari */
 }
 
 .adjustment-container::-webkit-scrollbar {
@@ -115,7 +122,7 @@ button {
     color: white;
     border: none;
     border-radius: 21px;
-    width: 30%;
+    width: 90px;
 }
 
 button:hover {
@@ -155,13 +162,6 @@ input[type="range"]::-ms-thumb {
     border-radius: 50%;
     cursor: pointer;
     border: 1px solid #ffffff;
-}
-
-input[type="file"] {
-    padding-top: 10px;
-    padding-bottom: 5px;
-    margin: 10px 4px 10px 4px;
-    width: 100%;
 }
 
 /* Crop Modal Styles */
@@ -216,61 +216,94 @@ input[type="file"] {
 /* Mobile view */
 @media (max-width: 768px) {
     body {
-        padding: 0px;
-        height: auto;
+        padding: 0;
+        height: 100vh; /* Full viewport height */
         overflow: auto;
+        display: flex;
+        flex-direction: column;
     }
 
     .container {
         flex-direction: column;
         height: auto;
         align-items: center;
+        flex: 1;
+        padding-bottom: 200px; /* Space for the fixed controls at the bottom */
     }
 
     .image-container {
         width: 100%;
         height: auto;
         max-height: 50vh;
+        margin-bottom: 20px; /* Ensure space between canvas and controls */
+    }
+
+    .controls-wrapper {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: auto;
+        z-index: 100; /* Ensure controls are above other elements */
     }
 
     .controls {
         width: 100%;
         height: auto;
-        max-height: none;
-        overflow-y: visible;
-    }
-
-    #canvas {
-        width: 100%;
-        height: auto;
-        max-height: none !important;
+        max-height: 200px; /* Limit height to avoid taking too much space */
+        overflow-y: auto;
+        border-radius: 0;
+        box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1); /* Shadow at the top */
+        padding: 10px;
+        -webkit-overflow-scrolling: touch; /* Smooth scrolling in Safari */
     }
 
     .adjustment-container {
-        max-height: 7vh;
+        max-height: 80px; /* Adjusted for mobile */
     }
 
     .buttons {
+        padding-top: 5px !important;
         display: flex;
         flex-wrap: wrap;
         justify-content: center;
         gap: 5px;
+        position: sticky;
+        bottom: 0;
+        background-color: #fff; /* Ensure background is visible when sticky */
+        padding: 10px 0;
+        z-index: 101; /* Ensure buttons are above other elements in controls */
     }
 
     button {
-        width: 20% !important;
+        max-width: 80px;
         font-size: 12px;
+        margin: 5px 0px 0px 0px;
     }
 
     .modal-content {
         min-width: 100%;
         padding: 10px;
+        max-height: 80vh; /* Ensure modal doesn't overflow viewport */
     }
 
     .crop-button-group button {
         padding: 8px 15px;
     }
-    input[type="file"] {
-        padding-left: 35px;
+
+    /* Safari-specific adjustments */
+    @supports (-webkit-touch-callout: none) {
+        body {
+            -webkit-user-select: none; /* Prevent text selection on touch */
+        }
+
+        .controls {
+            -webkit-backdrop-filter: blur(5px); /* Add a blur effect for better readability */
+            backdrop-filter: blur(5px);
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none; /* Ensure consistent appearance in Safari */
+        }
     }
 }

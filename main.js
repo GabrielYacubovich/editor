@@ -68,6 +68,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const imageLoader = document.getElementById('image-loader');
+    const uploadBtn = document.getElementById('upload-btn');
+
+    // Trigger file input click when the upload button is clicked
+    uploadBtn.addEventListener('click', () => {
+        imageLoader.click();
+    });
+
     imageLoader.addEventListener('change', (event) => {
         const file = event.target.files[0];
         if (file) {
