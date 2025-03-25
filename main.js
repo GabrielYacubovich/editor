@@ -16,13 +16,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const imageProcessor = new ImageProcessor(gl, state);
     const ui = new UI(state, imageProcessor, canvas);
 
-    // Crop Modal Setup
     const cropModal = document.getElementById('crop-modal');
     const cropCanvas = document.getElementById('crop-canvas');
     const cropCtx = cropCanvas.getContext('2d');
     cropCtx.imageSmoothingEnabled = true;
 
-    // Create a hidden WebGL canvas for effects preview (offscreen, not added to DOM)
     const effectsCanvas = document.createElement('canvas');
     const effectsGl = effectsCanvas.getContext('webgl', { preserveDrawingBuffer: true });
     const effectsProcessor = new ImageProcessor(effectsGl, state);
@@ -70,7 +68,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const imageLoader = document.getElementById('image-loader');
     const uploadBtn = document.getElementById('upload-btn');
 
-    // Trigger file input click when the upload button is clicked
     uploadBtn.addEventListener('click', () => {
         imageLoader.click();
     });
@@ -135,7 +132,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Listen for custom resize event from cropRotate.js
     canvas.addEventListener('resize', () => {
         resizeCanvasDisplay();
     });

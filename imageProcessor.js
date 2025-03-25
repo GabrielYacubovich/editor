@@ -213,7 +213,6 @@ export class ImageProcessor {
         this.gl.shaderSource(shader, source);
         this.gl.compileShader(shader);
         if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
-            console.error('Shader compile failed:', this.gl.getShaderInfoLog(shader));
             this.gl.deleteShader(shader);
             return null;
         }

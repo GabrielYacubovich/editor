@@ -95,7 +95,6 @@ export class UI {
         });
 
         document.getElementById('crop').addEventListener('click', () => {
-            // Logic remains in main.js
         });
     }
 

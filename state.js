@@ -33,7 +33,7 @@ export class State {
         this.showOriginal = false;
         this.cropSettings = null;
         this.cropHistory = [];
-        this.lastCropRect = null; // Add this to store the last crop rectangle position
+        this.lastCropRect = null;
     }
 
     setImage(img) {
@@ -85,7 +85,7 @@ export class State {
         this.history = [];
         this.historyIndex = -1;
         this.redoStack = [];
-        this.lastCropRect = null; // Reset last crop rectangle
+        this.lastCropRect = null;
         this.addInitialStateToHistory();
     }
 
@@ -93,7 +93,7 @@ export class State {
         this.originalImage = null;
         this.image = null;
         this.cropHistory = [];
-        this.lastCropRect = null; // Reset last crop rectangle for new image
+        this.lastCropRect = null;
         this.adjustments = {
             brightness: 1.0,
             contrast: 1.0,
