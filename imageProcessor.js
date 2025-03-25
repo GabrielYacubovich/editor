@@ -43,6 +43,16 @@ export class ImageProcessor {
             uniform float u_vibrance;
             uniform float u_grayscale;
             uniform float u_invert;
+            uniform float u_rgbSplit;
+            uniform float u_scanLines;
+            uniform float u_pixelation;
+            uniform float u_waveDistortion;
+            uniform float u_chromaticAberration;
+            uniform float u_digitalNoise;
+            uniform float u_blockGlitch;
+            uniform float u_lineShift;
+            uniform float u_signalInterference;
+            uniform float u_ghosting;
             uniform bool u_showOriginal;
             varying vec2 v_texCoord;
 
@@ -84,10 +94,54 @@ export class ImageProcessor {
                 return fract(sin(dot(st.xy, vec2(12.9898, 78.233))) * 43758.5453123);
             }
 
+            float noise(vec2 st) {
+                vec2 i = floor(st);
+                vec2 f = fract(st);
+                vec2 u = f * f * (3.0 - 2.0 * f);
+                return mix(mix(random(i + vec2(0.0, 0.0)), random(i + vec2(1.0, 0.0)), u.x),
+                          mix(random(i + vec2(0.0, 1.0)), random(i + vec2(1.0, 1.0)), u.x), u.y);
+            }
+
             void main() {
-                vec4 color = texture2D(u_image, v_texCoord);
+                vec2 uv = v_texCoord;
+                vec4 color = vec4(0.0);
 
                 if (!u_showOriginal) {
+                    // Apply glitch effects
+                    vec2 distortedUV = uv;
+
+                    // Wave Distortion
+                    if (u_waveDistortion > 0.0) {
+                        distortedUV.x += sin(distortedUV.y * 10.0) * u_waveDistortion * 0.05;
+                        distortedUV.y += cos(distortedUV.x * 10.0) * u_waveDistortion * 0.05;
+                    }
+
+                    // Pixelation
+                    if (u_pixelation > 0.0) {
+                        float pix = 1.0 - u_pixelation * 50.0;
+                        distortedUV = floor(distortedUV / pix) * pix;
+                    }
+
+                    // Line Shift
+                    if (u_lineShift > 0.0) {
+                        float shift = random(vec2(floor(uv.y * 100.0), 0.0)) * u_lineShift;
+                        distortedUV.x += shift;
+                    }
+
+                    // RGB Split & Chromatic Aberration
+                    vec4 baseColor = texture2D(u_image, distortedUV);
+                    if (u_rgbSplit > 0.0 || u_chromaticAberration > 0.0) {
+                        float split = u_rgbSplit + u_chromaticAberration;
+                        vec2 offset = vec2(split, 0.0);
+                        color.r = texture2D(u_image, distortedUV + offset).r;
+                        color.g = baseColor.g;
+                        color.b = texture2D(u_image, distortedUV - offset).b;
+                        color.a = baseColor.a;
+                    } else {
+                        color = baseColor;
+                    }
+
+                    // Basic adjustments
                     color.rgb *= u_exposure;
                     color.rgb = pow(color.rgb, vec3(1.0 / u_gamma));
                     color.rgb *= u_brightness;
@@ -99,6 +153,7 @@ export class ImageProcessor {
                     if (hsl.x < 0.0) hsl.x += 1.0;
                     color.rgb = hslToRgb(hsl);
 
+                    // Other adjustments
                     float avg = (color.r + color.g + color.b) / 3.0;
                     float maxColor = max(max(color.r, color.g), color.b);
                     float amt = (maxColor - avg) * u_vibrance;
@@ -118,58 +173,55 @@ export class ImageProcessor {
                         color.rgb += u_whites * (luminance - 0.75) * 4.0;
                     }
 
+                    // Sharpness & Clarity
+                    vec2 offset = vec2(0.004);
+                    vec3 blurred = texture2D(u_image, distortedUV).rgb;
+                    color.rgb += (color.rgb - blurred) * u_sharpness;
                     color.rgb = mix(color.rgb, (color.rgb - 0.5) * (1.0 + u_clarity) + 0.5, 0.5);
+
+                    // Temperature & Tint
                     color.r += u_temperature * 0.2;
                     color.b -= u_temperature * 0.2;
                     color.g += u_tint * 0.2;
 
-                    vec2 offset = vec2(0.004);
-                    vec3 blurred = vec3(0.0);
-                    float kernelSum = 0.0;
+                    // Scan Lines
+                    if (u_scanLines > 0.0) {
+                        float scan = sin(uv.y * 800.0) * u_scanLines * 0.1;
+                        color.rgb += vec3(scan);
+                    }
 
-                    float kernel[25];
-                    kernel[0] = 1.0; kernel[1] = 1.0; kernel[2] = 1.0; kernel[3] = 1.0; kernel[4] = 1.0;
-                    kernel[5] = 1.0; kernel[6] = 1.0; kernel[7] = 1.0; kernel[8] = 1.0; kernel[9] = 1.0;
-                    kernel[10] = 1.0; kernel[11] = 1.0; kernel[12] = 1.0; kernel[13] = 1.0; kernel[14] = 1.0;
-                    kernel[15] = 1.0; kernel[16] = 1.0; kernel[17] = 1.0; kernel[18] = 1.0; kernel[19] = 1.0;
-                    kernel[20] = 1.0; kernel[21] = 1.0; kernel[22] = 1.0; kernel[23] = 1.0; kernel[24] = 1.0;
-                    kernelSum = 25.0;
+                    // Digital Noise
+                    if (u_digitalNoise > 0.0) {
+                        float n = noise(uv * 1000.0) * u_digitalNoise * 0.2;
+                        color.rgb += vec3(n);
+                    }
 
-                    blurred += texture2D(u_image, v_texCoord + vec2(-2.0 * offset.x, -2.0 * offset.y)).rgb * kernel[0];
-                    blurred += texture2D(u_image, v_texCoord + vec2(-1.0 * offset.x, -2.0 * offset.y)).rgb * kernel[1];
-                    blurred += texture2D(u_image, v_texCoord + vec2(0.0, -2.0 * offset.y)).rgb * kernel[2];
-                    blurred += texture2D(u_image, v_texCoord + vec2(1.0 * offset.x, -2.0 * offset.y)).rgb * kernel[3];
-                    blurred += texture2D(u_image, v_texCoord + vec2(2.0 * offset.x, -2.0 * offset.y)).rgb * kernel[4];
-                    blurred += texture2D(u_image, v_texCoord + vec2(-2.0 * offset.x, -1.0 * offset.y)).rgb * kernel[5];
-                    blurred += texture2D(u_image, v_texCoord + vec2(-1.0 * offset.x, -1.0 * offset.y)).rgb * kernel[6];
-                    blurred += texture2D(u_image, v_texCoord + vec2(0.0, -1.0 * offset.y)).rgb * kernel[7];
-                    blurred += texture2D(u_image, v_texCoord + vec2(1.0 * offset.x, -1.0 * offset.y)).rgb * kernel[8];
-                    blurred += texture2D(u_image, v_texCoord + vec2(2.0 * offset.x, -1.0 * offset.y)).rgb * kernel[9];
-                    blurred += texture2D(u_image, v_texCoord + vec2(-2.0 * offset.x, 0.0)).rgb * kernel[10];
-                    blurred += texture2D(u_image, v_texCoord + vec2(-1.0 * offset.x, 0.0)).rgb * kernel[11];
-                    blurred += texture2D(u_image, v_texCoord).rgb * kernel[12];
-                    blurred += texture2D(u_image, v_texCoord + vec2(1.0 * offset.x, 0.0)).rgb * kernel[13];
-                    blurred += texture2D(u_image, v_texCoord + vec2(2.0 * offset.x, 0.0)).rgb * kernel[14];
-                    blurred += texture2D(u_image, v_texCoord + vec2(-2.0 * offset.x, 1.0 * offset.y)).rgb * kernel[15];
-                    blurred += texture2D(u_image, v_texCoord + vec2(-1.0 * offset.x, 1.0 * offset.y)).rgb * kernel[16];
-                    blurred += texture2D(u_image, v_texCoord + vec2(0.0, 1.0 * offset.y)).rgb * kernel[17];
-                    blurred += texture2D(u_image, v_texCoord + vec2(1.0 * offset.x, 1.0 * offset.y)).rgb * kernel[18];
-                    blurred += texture2D(u_image, v_texCoord + vec2(2.0 * offset.x, 1.0 * offset.y)).rgb * kernel[19];
-                    blurred += texture2D(u_image, v_texCoord + vec2(-2.0 * offset.x, 2.0 * offset.y)).rgb * kernel[20];
-                    blurred += texture2D(u_image, v_texCoord + vec2(-1.0 * offset.x, 2.0 * offset.y)).rgb * kernel[21];
-                    blurred += texture2D(u_image, v_texCoord + vec2(0.0, 2.0 * offset.y)).rgb * kernel[22];
-                    blurred += texture2D(u_image, v_texCoord + vec2(1.0 * offset.x, 2.0 * offset.y)).rgb * kernel[23];
-                    blurred += texture2D(u_image, v_texCoord + vec2(2.0 * offset.x, 2.0 * offset.y)).rgb * kernel[24];
+                    // Block Glitch
+                    if (u_blockGlitch > 0.0) {
+                        float block = floor(random(floor(uv * 20.0)) * u_blockGlitch * 10.0);
+                        if (block > 0.5) {
+                            color.rgb = texture2D(u_image, uv + vec2(block * 0.1, 0.0)).rgb;
+                        }
+                    }
 
-                    blurred /= kernelSum;
-                    vec3 highFreq = color.rgb - blurred;
-                    color.rgb += highFreq * u_sharpness;
+                    // Signal Interference
+                    if (u_signalInterference > 0.0) {
+                        float interference = sin(uv.y * 1000.0 + random(uv)) * u_signalInterference * 0.1;
+                        color.rgb += vec3(interference);
+                    }
 
-                    vec2 uv = v_texCoord - 0.5;
-                    float dist = length(uv);
+                    // Ghosting
+                    if (u_ghosting > 0.0) {
+                        vec4 ghost = texture2D(u_image, uv + vec2(u_ghosting * 0.1, 0.0));
+                        color.rgb = mix(color.rgb, ghost.rgb, u_ghosting);
+                    }
+
+                    // Final effects
+                    vec2 center = uv - 0.5;
+                    float dist = length(center);
                     color.rgb *= 1.0 - u_vignette * smoothstep(0.3, 0.7, dist);
 
-                    float noiseVal = random(v_texCoord + vec2(u_noise * 1000.0)) * u_noise;
+                    float noiseVal = random(uv + vec2(u_noise * 1000.0)) * u_noise;
                     color.rgb += vec3(noiseVal) * 0.2;
 
                     vec3 sepiaColor = vec3(
@@ -183,6 +235,8 @@ export class ImageProcessor {
                     color.rgb = mix(color.rgb, vec3(gray), u_grayscale);
                     color.rgb = mix(color.rgb, 1.0 - color.rgb, u_invert);
                     color.a *= u_opacity;
+                } else {
+                    color = texture2D(u_image, uv);
                 }
 
                 gl_FragColor = clamp(color, 0.0, 1.0);
@@ -280,6 +334,16 @@ export class ImageProcessor {
         this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_vibrance'), this.state.adjustments.vibrance);
         this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_grayscale'), this.state.adjustments.grayscale);
         this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_invert'), this.state.adjustments.invert);
+        this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_rgbSplit'), this.state.adjustments.rgbSplit);
+        this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_scanLines'), this.state.adjustments.scanLines);
+        this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_pixelation'), this.state.adjustments.pixelation);
+        this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_waveDistortion'), this.state.adjustments.waveDistortion);
+        this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_chromaticAberration'), this.state.adjustments.chromaticAberration);
+        this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_digitalNoise'), this.state.adjustments.digitalNoise);
+        this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_blockGlitch'), this.state.adjustments.blockGlitch);
+        this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_lineShift'), this.state.adjustments.lineShift);
+        this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_signalInterference'), this.state.adjustments.signalInterference);
+        this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_ghosting'), this.state.adjustments.ghosting);
         this.gl.uniform1i(this.gl.getUniformLocation(this.program, 'u_showOriginal'), this.state.showOriginal ? 1 : 0);
 
         this.gl.activeTexture(this.gl.TEXTURE0);
