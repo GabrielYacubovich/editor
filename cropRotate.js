@@ -8,7 +8,7 @@ export class CropRotate {
         this.effectsCanvas = effectsCanvas;
         this.effectsProcessor = effectsProcessor;
         this.mainCanvas = mainCanvas;
-        this.resizeCanvasDisplay = resizeCanvasDisplay; // Store the resize function
+        this.resizeCanvasDisplay = resizeCanvasDisplay;
 
         this.cropImage = new Image();
         this.cropRect = { x: 0, y: 0, width: 0, height: 0 };
@@ -24,6 +24,11 @@ export class CropRotate {
         this.maxCanvasWidth = 0;
         this.maxCanvasHeight = 0;
         this.fixedScale = 0;
+        this.resolutionScale = 0.25; // 1/4 resolution for overlay canvas
+
+        // Create an offscreen canvas for the low-resolution overlay
+        this.overlayCanvas = document.createElement('canvas');
+        this.overlayCtx = this.overlayCanvas.getContext('2d');
 
         this.setupEventListeners();
     }
@@ -48,19 +53,27 @@ export class CropRotate {
 
             this.fixedScale = Math.min((this.maxCanvasWidth - buffer) / maxRotatedSize, (this.maxCanvasHeight - buffer) / maxRotatedSize, 1);
 
-            this.cropCanvas.width = Math.round(maxRotatedSize * this.fixedScale);
-            this.cropCanvas.height = Math.round(maxRotatedSize * this.fixedScale);
-            this.cropCanvas.dataset.scaleFactor = this.fixedScale;
-            this.cropCanvas.style.width = `${this.cropCanvas.width}px`;
-            this.cropCanvas.style.height = `${this.cropCanvas.height}px`;
+            // Full resolution for both cropCanvas and effectsCanvas
+            const fullWidth = Math.round(maxRotatedSize * this.fixedScale);
+            const fullHeight = Math.round(maxRotatedSize * this.fixedScale);
 
-            this.effectsCanvas.width = this.cropCanvas.width;
-            this.effectsCanvas.height = this.cropCanvas.height;
+            this.cropCanvas.width = fullWidth;
+            this.cropCanvas.height = fullHeight;
+            this.cropCanvas.dataset.scaleFactor = this.fixedScale;
+            this.cropCanvas.style.width = `${fullWidth}px`;
+            this.cropCanvas.style.height = `${fullHeight}px`;
+
+            this.effectsCanvas.width = fullWidth;
+            this.effectsCanvas.height = fullHeight;
             this.effectsProcessor.setImage(this.cropImage);
 
+            // Low resolution for overlay canvas
+            this.overlayCanvas.width = Math.round(fullWidth * this.resolutionScale);
+            this.overlayCanvas.height = Math.round(fullHeight * this.resolutionScale);
+
             const boundsWithRotation = this.getRotatedImageBounds(this.originalWidth, this.originalHeight, this.rotation, this.fixedScale);
-            const offsetX = (this.cropCanvas.width - boundsWithRotation.width) / 2;
-            const offsetY = (this.cropCanvas.height - boundsWithRotation.height) / 2;
+            const offsetX = (fullWidth - boundsWithRotation.width) / 2;
+            const offsetY = (fullHeight - boundsWithRotation.height) / 2;
 
             if (this.state.cropHistory.length > 0) {
                 const lastCrop = this.state.cropHistory[this.state.cropHistory.length - 1];
@@ -218,15 +231,20 @@ export class CropRotate {
             const maxRotatedSize = maxDimension * Math.sqrt(2);
             this.fixedScale = Math.min((this.maxCanvasWidth - buffer) / maxRotatedSize, (this.maxCanvasHeight - buffer) / maxRotatedSize, 1);
 
-            this.cropCanvas.width = Math.round(maxRotatedSize * this.fixedScale);
-            this.cropCanvas.height = Math.round(maxRotatedSize * this.fixedScale);
+            const fullWidth = Math.round(maxRotatedSize * this.fixedScale);
+            const fullHeight = Math.round(maxRotatedSize * this.fixedScale);
+            this.cropCanvas.width = fullWidth;
+            this.cropCanvas.height = fullHeight;
             this.cropCanvas.dataset.scaleFactor = this.fixedScale;
-            this.cropCanvas.style.width = `${this.cropCanvas.width}px`;
-            this.cropCanvas.style.height = `${this.cropCanvas.height}px`;
+            this.cropCanvas.style.width = `${fullWidth}px`;
+            this.cropCanvas.style.height = `${fullHeight}px`;
 
-            this.effectsCanvas.width = this.cropCanvas.width;
-            this.effectsCanvas.height = this.cropCanvas.height;
+            this.effectsCanvas.width = fullWidth;
+            this.effectsCanvas.height = fullHeight;
             this.effectsProcessor.setImage(this.cropImage);
+
+            this.overlayCanvas.width = Math.round(fullWidth * this.resolutionScale);
+            this.overlayCanvas.height = Math.round(fullHeight * this.resolutionScale);
 
             const initialBounds = this.getRotatedImageBounds(this.originalWidth, this.originalHeight, 0, this.fixedScale);
             this.cropRect = {
@@ -314,16 +332,13 @@ export class CropRotate {
 
         const croppedImage = new Image();
         croppedImage.onload = () => {
-            // Reset main canvas attributes
             this.mainCanvas.removeAttribute('width');
             this.mainCanvas.removeAttribute('height');
             this.mainCanvas.removeAttribute('style');
 
-            // Set new dimensions
             this.mainCanvas.width = croppedImage.width;
             this.mainCanvas.height = croppedImage.height;
 
-            // Update state and image processor
             this.state.setImage(croppedImage);
             this.state.cropSettings = {
                 x: 0,
@@ -334,15 +349,13 @@ export class CropRotate {
                 scale: 1
             };
             this.imageProcessor.setImage(croppedImage);
-            this.imageProcessor.render(); // Ensure immediate render
+            this.imageProcessor.render();
 
-            // Update crop modal image
             this.cropImage.src = croppedImage.src;
             this.originalWidth = cropWidth;
             this.originalHeight = cropHeight;
             this.effectsProcessor.setImage(croppedImage);
 
-            // Reset crop rectangle
             const newBounds = this.getRotatedImageBounds(this.originalWidth, this.originalHeight, 0, scaleFactor);
             this.cropRect = {
                 x: (this.cropCanvas.width - newBounds.width) / 2,
@@ -351,7 +364,6 @@ export class CropRotate {
                 height: newBounds.height
             };
 
-            // Trigger resize and render on main canvas
             this.resizeCanvasDisplay();
         };
         croppedImage.src = croppedCanvas.toDataURL('image/png');
@@ -376,22 +388,37 @@ export class CropRotate {
         this.cropRect.width = this.clamp(this.cropRect.width, 10, scaledRotatedWidth - (this.cropRect.x - offsetX));
         this.cropRect.height = this.clamp(this.cropRect.height, 10, scaledRotatedHeight - (this.cropRect.y - offsetY));
 
+        // Clear the main crop canvas
         this.cropCtx.clearRect(0, 0, this.cropCanvas.width, this.cropCanvas.height);
 
+        // Render WebGL at full resolution
         this.renderEffectsWithTransform(offsetX, offsetY, scaledRotatedWidth, scaledRotatedHeight, angleRad, scale);
         this.cropCtx.drawImage(this.effectsCanvas, 0, 0);
 
-        this.cropCtx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-        this.cropCtx.fillRect(0, 0, this.cropCanvas.width, this.cropRect.y);
-        this.cropCtx.fillRect(0, this.cropRect.y + this.cropRect.height, this.cropCanvas.width, this.cropCanvas.height - (this.cropRect.y + this.cropRect.height));
-        this.cropCtx.fillRect(0, this.cropRect.y, this.cropRect.x, this.cropRect.height);
-        this.cropCtx.fillRect(this.cropRect.x + this.cropRect.width, this.cropRect.y, this.cropCanvas.width - (this.cropRect.x + this.cropRect.width), this.cropRect.height);
+        // Draw overlay on the low-resolution overlay canvas
+        this.overlayCtx.clearRect(0, 0, this.overlayCanvas.width, this.overlayCanvas.height);
 
-        this.cropCtx.strokeStyle = '#fff';
-        this.cropCtx.lineWidth = 2;
-        this.cropCtx.setLineDash([5, 5]);
-        this.cropCtx.strokeRect(this.cropRect.x, this.cropRect.y, this.cropRect.width, this.cropRect.height);
-        this.cropCtx.setLineDash([]);
+        const overlayRect = {
+            x: this.cropRect.x * this.resolutionScale,
+            y: this.cropRect.y * this.resolutionScale,
+            width: this.cropRect.width * this.resolutionScale,
+            height: this.cropRect.height * this.resolutionScale
+        };
+
+        this.overlayCtx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        this.overlayCtx.fillRect(0, 0, this.overlayCanvas.width, overlayRect.y);
+        this.overlayCtx.fillRect(0, overlayRect.y + overlayRect.height, this.overlayCanvas.width, this.overlayCanvas.height - (overlayRect.y + overlayRect.height));
+        this.overlayCtx.fillRect(0, overlayRect.y, overlayRect.x, overlayRect.height);
+        this.overlayCtx.fillRect(overlayRect.x + overlayRect.width, overlayRect.y, this.overlayCanvas.width - (overlayRect.x + overlayRect.width), overlayRect.height);
+
+        this.overlayCtx.strokeStyle = '#fff';
+        this.overlayCtx.lineWidth = 2 * this.resolutionScale;
+        this.overlayCtx.setLineDash([5 * this.resolutionScale, 5 * this.resolutionScale]);
+        this.overlayCtx.strokeRect(overlayRect.x, overlayRect.y, overlayRect.width, overlayRect.height);
+        this.overlayCtx.setLineDash([]);
+
+        // Draw the overlay onto the main canvas at full resolution
+        this.cropCtx.drawImage(this.overlayCanvas, 0, 0, this.overlayCanvas.width, this.overlayCanvas.height, 0, 0, this.cropCanvas.width, this.cropCanvas.height);
 
         this.previousRotation = this.rotation;
     }
