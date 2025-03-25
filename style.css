@@ -247,7 +247,7 @@ input[type="file"] {
     }
 
     .adjustment-container {
-        max-height: 50vh;
+        max-height: 7vh;
     }
 
     .buttons {
@@ -269,5 +269,8 @@ input[type="file"] {
 
     .crop-button-group button {
         padding: 8px 15px;
+    }
+    input[type="file"] {
+        padding-left: 35px;
     }
 }
