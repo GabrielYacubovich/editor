@@ -1,159 +1,93 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
     <link rel="icon" type="image/png" href="fav.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Editor de Imágenes</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>Image Editor</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="editor">
-        <div id="content">
-            <div id="image-container">
-                <canvas id="canvas"></canvas>
-                <div  id="loading-indicator" style="display: none; margin-top: 20px;"> <span>Loading</span></div>
-                <div class="hide-mobile">
-                    
-                </div>
-            </div>
-            <div id="controls-container">
-                
-                <div id="sliders-wrapper">
-                    <div class="controls">
-                        <div class="hide-mobile">
-                        </div>
-                        
-                        <!-- Basic Filters -->
-                        <div>
-
-                            <label for="brightness">Brightness:</label>
-                            <input type="range" id="brightness" min="0" max="200" value="100">
-                            <span class="hide-mobile" id="brightness-value">100%</span>
-                        </div>
-                        <div>
-                            <label for="contrast">Contrast:</label>
-                            <input type="range" id="contrast" min="0" max="200" value="100">
-                            <span class="hide-mobile" id="contrast-value">100%</span>
-                        </div>
-                        <div>
-                            <label for="grayscale">Grayscale:</label>
-                            <input type="range" id="grayscale" min="0" max="100" value="0">
-                            <span class="hide-mobile" id="grayscale-value">0%</span>
-                        </div>
-                        <div>
-                            <label for="vibrance">Vibrance:</label>
-                            <input type="range" id="vibrance" min="0" max="200" value="100">
-                            <span class="hide-mobile" id="vibrance-value">100%</span>
-                        </div>
-                        <div>
-                            <label for="highlights">Highlights:</label>
-                            <input type="range" id="highlights" min="0" max="200" value="100">
-                            <span class="hide-mobile" id="highlights-value">100%</span>
-                        </div>
-                        <div>
-                            <label for="shadows">Shadows:</label>
-                            <input type="range" id="shadows" min="0" max="200" value="100">
-                            <span class="hide-mobile" id="shadows-value">100%</span>
-                        </div>
-                        <div>
-                            <label for="noise">Noise:</label>
-                            <input type="range" id="noise" min="0" max="100" value="0">
-                            <span class="hide-mobile" id="noise-value">0%</span>
-                        </div>
-                        <div>
-                            <label for="exposure">Exposure:</label>
-                            <input type="range" id="exposure" min="0" max="200" value="100">
-                            <span class="hide-mobile" id="exposure-value">100%</span>
-                        </div>
-                        <div>
-                            <label for="temperature">Temperature:</label>
-                            <input type="range" id="temperature" min="0" max="200" value="100">
-                            <span class="hide-mobile" id="temperature-value">100%</span>
-                        </div>
-                        <div>
-                            <label for="saturation">Saturation:</label>
-                            <input type="range" id="saturation" min="0" max="200" value="100">
-                            <span class="hide-mobile" id="saturation-value">100%</span>
-                        </div>
-
-                        <!-- Glitch Effects and Complex Filters -->
-                       
-                       
-                        <div style="padding-top: 0px;">
-                            <label for="glitch-chromatic">Chromatic (H):</label>
-                            <input type="range" id="glitch-chromatic" min="0" max="100" value="0">
-                            <span class="hide-mobile" id="glitch-chromatic-value">0%</span>
-                        </div>
-                        <div>
-                            <label for="glitch-rgb-split">RGB Split:</label>
-                            <input type="range" id="glitch-rgb-split" min="0" max="100" value="0">
-                            <span  class="hide-mobile" id="glitch-rgb-split-value">0%</span>
-                        </div>
-                 
-                        <div>
-                            <label for="glitch-chromatic-vertical">Chromatic (V):</label>
-                            <input type="range" id="glitch-chromatic-vertical" min="0" max="100" value="0">
-                            <span class="hide-mobile" id="glitch-chromatic-vertical-value">0%</span>
-                        </div>
-                        <div>
-                            <label for="glitch-chromatic-diagonal">Chromatic (D):</label>
-                            <input type="range" id="glitch-chromatic-diagonal" min="0" max="100" value="0">
-                            <span class="hide-mobile" id="glitch-chromatic-diagonal-value">0%</span>
-                        </div>
-                        <div>
-                            <label for="glitch-pixel-shuffle">Pixel Shuffle:</label>
-                            <input type="range" id="glitch-pixel-shuffle" min="0" max="100" value="0">
-                            <span class="hide-mobile" id="glitch-pixel-shuffle-value">0%</span>
-                        </div>
-                        <div>
-                            <label for="glitch-wave">Wave Distortion:</label>
-                            <input type="range" id="glitch-wave" min="0" max="100" value="0">
-                            <span class="hide-mobile" id="glitch-wave-value">0%</span>
-                        </div>
-                    
-                        <div>
-                            <label for="kaleidoscope-segments">Kaleidoscope:</label>
-                            <input type="range" id="kaleidoscope-segments" min="0" max="12" value="0">
-                            <span class="hide-mobile" id="kaleidoscope-segments-value">0</span>
-                        </div>
-                        <div>
-                            <label for="kaleidoscope-offset">Kaleido Offset:</label>
-                            <input type="range" id="kaleidoscope-offset" min="0" max="100" value="0">
-                            <span class="hide-mobile" id="kaleidoscope-offset-value">0%</span>
-                        </div>
-                        <div>
-                            <label for="vortex-twist">Vortex Twist:</label>
-                            <input type="range" id="vortex-twist" min="0" max="100" value="0">
-                            <span class="hide-mobile" id="vortex-twist-value">0%</span>
-                        </div>
-                        <div>
-                            <label for="edge-detect">Edge Detect:</label>
-                            <input type="range" id="edge-detect" min="0" max="100" value="0">
-                            <span class="hide-mobile" id="edge-detect-value">0%</span>
-                        </div>
-                    </div>
-                </div>
-                <div id="button-bar" class="action-buttons" style="padding-top: 20px;">
-                    <button type="button" id="undo" aria-label="Deshacer la última acción">Deshacer</button>
-                    <button type="button" id="redo" aria-label="Rehacer la última acción deshecha">Rehacer</button>
-                    <button type="button" id="restore" aria-label="Restaurar imagen a estado original">Restaurar</button>
-                    <button type="button" id="download" aria-label="Descargar la imagen editada">Descargar</button>
-                    <button class="hide-mobile" type="button" id="toggle-original" aria-label="Alternar entre imagen original y editada">Original</button>
-                    <button type="button" id="crop-image-button" aria-label="Cortar la imagen">Cortar</button>
-                    <button type="button" id="upload-new-photo" style="background-color: rgb(20, 118, 74);" aria-label="Subir una nueva foto">Subir</button>
-                </div>
-            </div>
+    <div class="container">
+        <div class="image-container">
+            <canvas style="max-height: none !important;" id="canvas" width="800" height="600"></canvas>
         </div>
-    </div>
-
-    <!-- Image Modal -->
-    <div id="image-modal" class="modal">
-        <div class="modal-content">
-            <span class="modal-close-btn">×</span>
-            <div class="modal-inner">
-                <img id="modal-image" src="" alt="Imagen ampliada">
-                <div id="modal-controls" class="controls"></div>
+        <div class="controls">
+            <div class="adjustment-container">
+                <div class="adjustments">
+                    <label>Brightness: 
+                        <input type="range" id="brightness" min="0" max="2" step="0.01" value="1">
+                    </label>
+                    <label>Contrast: 
+                        <input type="range" id="contrast" min="0" max="2" step="0.01" value="1">
+                    </label>
+                    <label>Saturation: 
+                        <input type="range" id="saturation" min="0" max="2" step="0.01" value="1">
+                    </label>
+                    <label>Hue: 
+                        <input type="range" id="hue" min="-180" max="180" step="1" value="0">
+                    </label>
+                    <label>Exposure: 
+                        <input type="range" id="exposure" min="0" max="2" step="0.01" value="1">
+                    </label>
+                    <label>Highlights: 
+                        <input type="range" id="highlights" min="-1" max="1" step="0.01" value="0">
+                    </label>
+                    <label>Shadows: 
+                        <input type="range" id="shadows" min="-1" max="1" step="0.01" value="0">
+                    </label>
+                    <label>Blacks: 
+                        <input type="range" id="blacks" min="-1" max="1" step="0.01" value="0">
+                    </label>
+                    <label>Whites: 
+                        <input type="range" id="whites" min="-1" max="1" step="0.01" value="0">
+                    </label>
+                    <label>Temperature: 
+                        <input type="range" id="temperature" min="-1" max="1" step="0.01" value="0">
+                    </label>
+                    <label>Tint: 
+                        <input type="range" id="tint" min="-1" max="1" step="0.01" value="0">
+                    </label>
+                    <label>Sharpness: 
+                        <input type="range" id="sharpness" min="0" max="2" step="0.01" value="0">
+                    </label>
+                    <label>Vignette: 
+                        <input type="range" id="vignette" min="0" max="1" step="0.01" value="0">
+                    </label>
+                    <label>Noise: 
+                        <input type="range" id="noise" min="0" max="1" step="0.01" value="0">
+                    </label>
+                    <label>Clarity: 
+                        <input type="range" id="clarity" min="-1" max="1" step="0.01" value="0">
+                    </label>
+                    <label>Opacity: 
+                        <input type="range" id="opacity" min="0" max="1" step="0.01" value="1">
+                    </label>
+                    <label>Gamma: 
+                        <input type="range" id="gamma" min="0.1" max="3" step="0.01" value="1">
+                    </label>
+                    <label>Sepia: 
+                        <input class="range" type="range" id="sepia" min="0" max="1" step="0.01" value="0">
+                    </label>
+                    <label>Vibrance: 
+                        <input type="range" id="vibrance" min="-1" max="1" step="0.01" value="0">
+                    </label>
+                    <label>Grayscale: 
+                        <input type="range" id="grayscale" min="0" max="1" step="0.01" value="0">
+                    </label>
+                    <label>Invert: 
+                        <input type="range" id="invert" min="0" max="1" step="0.01" value="0">
+                    </label>
+                </div>
+            </div>
+            <div class="buttons">
+                <input type="file" id="image-loader" accept="image/*">
+                <button id="reset">Reset</button>
+                <button id="export">Export</button>
+                <button id="undo">Undo</button>
+                <button id="redo">Redo</button>
+                <button id="toggle-original">Original</button>
+                <button id="crop">Crop</button>
             </div>
         </div>
     </div>
@@ -163,23 +97,38 @@
         <div class="modal-content">
             <span class="modal-close-btn">×</span>
             <canvas id="crop-canvas"></canvas>
-            <div id="crop-controls">
-                <!-- Content will be dynamically added by setupCropControls -->
-            </div>
+            <div id="crop-controls"></div>
         </div>
     </div>
 
-    <!-- Preview Modal -->
-    <div id="preview-modal" class="modal">
+    <!-- Export Modal -->
+    <div id="export-modal" class="modal">
         <div class="modal-content">
             <span class="modal-close-btn">×</span>
-            <div class="image-container">
-                <img id="preview-image" src="" alt="Preview">
-                <p id="preview-dimensions"></p>
+            <h3>Export Image</h3>
+            <label for="format">Format:</label>
+            <select id="format">
+                <option value="png">PNG</option>
+                <option value="jpeg">JPEG</option>
+            </select>
+            <label for="quality">Quality:</label>
+            <select id="quality">
+                <option value="0.1">10%</option>
+                <option value="0.2">20%</option>
+                <option value="0.4">40%</option>
+                <option value="0.6">60%</option>
+                <option value="0.8">80%</option>
+                <option value="1.0">100%</option>
+            </select>
+            <label for="filename">Filename:</label>
+            <input type="text" id="filename" value="edited-image">
+            <div class="modal-button-group">
+                <button id="download-btn">Download</button>
+                <button id="cancel-btn">Cancel</button>
             </div>
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <script src="main.js" type="module"></script>
 </body>
 </html>
