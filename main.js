@@ -55,11 +55,16 @@ document.addEventListener('DOMContentLoaded', () => {
             displayWidth = displayHeight * aspectRatio;
         }
 
+        // Ensure canvas aligns to the top and centers horizontally
         canvas.style.width = `${displayWidth}px`;
         canvas.style.height = `${displayHeight}px`;
         canvas.style.maxWidth = '95%';
         canvas.style.maxHeight = 'auto';
         canvas.style.objectFit = 'contain';
+        canvas.style.margin = '0 auto'; // Center horizontally
+        canvas.style.display = 'block'; // Ensure block display for proper alignment
+        canvas.style.position = 'relative'; // Ensure positioning context
+        canvas.style.top = '0'; // Align to the top explicitly
 
         canvas.classList.remove('resizing');
         imageProcessor.render();

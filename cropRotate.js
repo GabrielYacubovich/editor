@@ -145,48 +145,51 @@ export class CropRotate {
     setupCropControls() {
         const cropControls = document.getElementById('crop-controls');
         cropControls.innerHTML = `
-            <div class="crop-control-group">
-                <label for="cropRotation">Rotation:</label>
-                <input type="range" id="cropRotation" min="-180" max="180" value="${this.rotation}">
-                <span id="rotation-value" style="cursor: pointer;">${this.rotation}°</span>
-            </div>
-            <div class="crop-control-group aspect-lock-group">
-                <div class="aspect-ratio-wrapper">
-                    <label for="aspect-ratio">Aspect Ratio:</label>
-                    <select id="aspect-ratio">
-                        <option value="free">Free</option>
-                        <option value="1:1">1:1 (Square)</option>
-                        <option value="4:3">4:3</option>
-                        <option value="3:2">3:2</option>
-                        <option value="16:9">16:9</option>
-                        <option value="9:16">9:16</option>
-                        <option value="5:4">5:4</option>
-                        <option value="4:5">4:5</option>
+            <div class="crop-control-row">
+                <div class="crop-control-group">
+                    <label for="cropRotation">Rotation:</label>
+                    <input type="range" id="cropRotation" min="-180" max="180" value="${this.rotation}">
+                    <span id="rotation-value" style="cursor: pointer;">${this.rotation}°</span>
+                </div>
+                <div class="crop-control-group aspect-lock-group">
+                    <div class="aspect-ratio-wrapper">
+                        <label for="aspect-ratio">Aspect Ratio:</label>
+                        <select id="aspect-ratio">
+                            <option value="free">Free</option>
+                            <option value="1:1">1:1 (Square)</option>
+                            <option value="4:3">4:3</option>
+                            <option value="3:2">3:2</option>
+                            <option value="16:9">16:9</option>
+                            <option value="9:16">9:16</option>
+                            <option value="5:4">5:4</option>
+                            <option value="4:5">4:5</option>
+                        </select>
+                    </div>
+                    
+                </div>
+                <div class="crop-control-group">
+                    <label for="grid-type">Grid Overlay:</label>
+                    <select id="grid-type">
+                        <option value="none">None</option>
+                        <option value="cross" selected>Cross</option>
+                        <option value="rule-of-thirds">Rule of Thirds</option>
+                        <option value="golden-ratio">Golden Ratio</option>
+                        <option value="grid-3x3">3x3 Grid</option>
+                        <option value="grid-4x4">4x4 Grid</option>
                     </select>
                 </div>
-                <div class="crop-lock-group">
-                    <input type="checkbox" id="lock-aspect" ${this.lockAspectRatio ? 'checked' : ''}>
-                    <label for="lock-aspect">Lock Aspect Ratio</label>
-                </div>
             </div>
-            <div class="crop-control-group">
-                <label for="grid-type">Grid Overlay:</label>
-                <select id="grid-type">
-                    <option value="none">None</option>
-                    <option value="cross" selected>Cross</option>
-                    <option value="rule-of-thirds">Rule of Thirds</option>
-                    <option value="golden-ratio">Golden Ratio</option>
-                    <option value="grid-3x3">3x3 Grid</option>
-                    <option value="grid-4x4">4x4 Grid</option>
-                </select>
-            </div>
-            <div class="crop-button-group">
+            <div class="crop-button-row">
                 <button id="crop-restore">Reset</button>
                 <button id="crop-confirm">Apply</button>
                 <button id="crop-skip">Cancel</button>
+                <div class="crop-lock-group">
+                        <input type="checkbox" id="lock-aspect" ${this.lockAspectRatio ? 'checked' : ''}>
+                        <label for="lock-aspect">Lock Aspect Ratio</label>
+                    </div>
             </div>
         `;
-
+    
         const rotationInput = document.getElementById('cropRotation');
         const rotationValue = document.getElementById('rotation-value');
         const aspectRatioSelect = document.getElementById('aspect-ratio');
@@ -195,13 +198,13 @@ export class CropRotate {
         const confirmBtn = document.getElementById('crop-confirm');
         const skipBtn = document.getElementById('crop-skip');
         const lockCheckbox = document.getElementById('lock-aspect');
-
+    
         rotationInput.addEventListener('input', (e) => {
             this.rotation = parseInt(e.target.value);
             rotationValue.textContent = `${this.rotation}°`;
             this.drawCropOverlay();
         });
-
+    
         rotationValue.addEventListener('click', () => {
             const input = document.createElement('input');
             input.type = 'number';
@@ -211,10 +214,10 @@ export class CropRotate {
             input.style.width = '60px';
             input.style.fontSize = '13px';
             input.style.padding = '2px';
-
+    
             rotationValue.replaceWith(input);
             input.focus();
-
+    
             input.addEventListener('change', (e) => {
                 const newValue = this.clamp(parseInt(e.target.value) || 0, -180, 180);
                 this.rotation = newValue;
@@ -223,7 +226,7 @@ export class CropRotate {
                 input.replaceWith(rotationValue);
                 rotationValue.textContent = `${this.rotation}°`;
             });
-
+    
             input.addEventListener('blur', () => {
                 const newValue = this.clamp(parseInt(input.value) || 0, -180, 180);
                 this.rotation = newValue;
@@ -232,25 +235,25 @@ export class CropRotate {
                 input.replaceWith(rotationValue);
                 rotationValue.textContent = `${this.rotation}°`;
             });
-
+    
             input.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     input.blur();
                 }
             });
         });
-
+    
         aspectRatioSelect.addEventListener('change', (e) => {
             const value = e.target.value;
             this.applyAspectRatio(value);
             this.drawCropOverlay();
         });
-
+    
         gridTypeSelect.addEventListener('change', (e) => {
             this.gridType = e.target.value;
             this.drawCropOverlay();
         });
-
+    
         restoreBtn.addEventListener('click', () => {
             this.rotation = 0;
             rotationInput.value = 0;
@@ -260,12 +263,12 @@ export class CropRotate {
             aspectRatioSelect.value = 'free';
             this.gridType = 'cross';
             gridTypeSelect.value = 'cross';
-
+    
             const buffer = 10;
             const maxDimension = Math.max(this.originalWidth, this.originalHeight);
             const maxRotatedSize = maxDimension * Math.sqrt(2);
             this.fixedScale = Math.min((this.maxCanvasWidth - buffer) / maxRotatedSize, (this.maxCanvasHeight - buffer) / maxRotatedSize, 1);
-
+    
             const fullWidth = Math.round(maxRotatedSize * this.fixedScale);
             const fullHeight = Math.round(maxRotatedSize * this.fixedScale);
             this.cropCanvas.width = fullWidth;
@@ -273,11 +276,11 @@ export class CropRotate {
             this.cropCanvas.dataset.scaleFactor = this.fixedScale;
             this.cropCanvas.style.width = `${fullWidth}px`;
             this.cropCanvas.style.height = `${fullHeight}px`;
-
+    
             this.effectsCanvas.width = fullWidth;
             this.effectsCanvas.height = fullHeight;
             this.effectsProcessor.setImage(this.cropImage);
-
+    
             const initialBounds = this.getRotatedImageBounds(this.originalWidth, this.originalHeight, 0, this.fixedScale);
             this.cropRect = {
                 x: initialBounds.x,
@@ -287,15 +290,15 @@ export class CropRotate {
             };
             this.drawCropOverlay();
         });
-
+    
         confirmBtn.addEventListener('click', () => {
             this.closeModal();
             this.applyCrop();
             this.state.commitAdjustment();
         });
-
+    
         skipBtn.addEventListener('click', () => this.closeModal());
-
+    
         lockCheckbox.addEventListener('change', (e) => {
             this.lockAspectRatio = e.target.checked;
             lockCheckbox.checked = this.lockAspectRatio; // Ensure checkbox reflects the state
@@ -304,7 +307,7 @@ export class CropRotate {
             }
             this.drawCropOverlay(); // Redraw to apply the lock if needed
         });
-
+    
         const closeBtn = this.cropModal.querySelector('.modal-close-btn');
         closeBtn.addEventListener('click', () => this.closeModal());
     }
