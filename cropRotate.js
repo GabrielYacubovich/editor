@@ -629,6 +629,7 @@ export class CropRotate {
         gl.bufferData(gl.ARRAY_BUFFER, texCoords, gl.STATIC_DRAW);
         gl.vertexAttribPointer(texCoordLoc, 2, gl.FLOAT, false, 0, 0);
 
+        // Set all uniforms, including glitch effects
         gl.uniform1f(gl.getUniformLocation(this.effectsProcessor.program, 'u_brightness'), this.state.adjustments.brightness);
         gl.uniform1f(gl.getUniformLocation(this.effectsProcessor.program, 'u_contrast'), this.state.adjustments.contrast);
         gl.uniform1f(gl.getUniformLocation(this.effectsProcessor.program, 'u_saturation'), this.state.adjustments.saturation);
@@ -650,6 +651,17 @@ export class CropRotate {
         gl.uniform1f(gl.getUniformLocation(this.effectsProcessor.program, 'u_vibrance'), this.state.adjustments.vibrance);
         gl.uniform1f(gl.getUniformLocation(this.effectsProcessor.program, 'u_grayscale'), this.state.adjustments.grayscale);
         gl.uniform1f(gl.getUniformLocation(this.effectsProcessor.program, 'u_invert'), this.state.adjustments.invert);
+        gl.uniform1f(gl.getUniformLocation(this.effectsProcessor.program, 'u_rgbSplit'), this.state.adjustments.rgbSplit);
+        gl.uniform1f(gl.getUniformLocation(this.effectsProcessor.program, 'u_filmGrain'), this.state.adjustments.filmGrain);
+        gl.uniform1f(gl.getUniformLocation(this.effectsProcessor.program, 'u_waveDistortion'), this.state.adjustments.waveDistortion);
+        gl.uniform1f(gl.getUniformLocation(this.effectsProcessor.program, 'u_blockGlitch'), this.state.adjustments.blockGlitch);
+        gl.uniform1f(gl.getUniformLocation(this.effectsProcessor.program, 'u_ghosting'), this.state.adjustments.ghosting);
+        gl.uniform1f(gl.getUniformLocation(this.effectsProcessor.program, 'u_fractalDistortion'), this.state.adjustments.fractalDistortion);
+        gl.uniform1f(gl.getUniformLocation(this.effectsProcessor.program, 'u_colorShift'), this.state.adjustments.colorShift);
+        gl.uniform1f(gl.getUniformLocation(this.effectsProcessor.program, 'u_pixelNoise'), this.state.adjustments.pixelNoise);
+        gl.uniform1f(gl.getUniformLocation(this.effectsProcessor.program, 'u_scratchTexture'), this.state.adjustments.scratchTexture);
+        gl.uniform1f(gl.getUniformLocation(this.effectsProcessor.program, 'u_organicDistortion'), this.state.adjustments.organicDistortion);
+        gl.uniform1i(gl.getUniformLocation(this.effectsProcessor.program, 'u_showOriginal'), this.state.showOriginal ? 1 : 0);
 
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, this.effectsProcessor.texture);
