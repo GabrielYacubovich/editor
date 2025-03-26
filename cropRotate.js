@@ -1,3 +1,4 @@
+// cropRotate.js
 export class CropRotate {
     constructor(state, imageProcessor, cropModal, cropCanvas, cropCtx, effectsCanvas, effectsProcessor, mainCanvas, resizeCanvasDisplay) {
         this.state = state;
@@ -24,7 +25,7 @@ export class CropRotate {
         this.maxCanvasWidth = 0;
         this.maxCanvasHeight = 0;
         this.fixedScale = 0;
-        this.gridType = 'cross'; // Default grid type
+        this.gridType = 'cross';
 
         this.setupEventListeners();
     }
@@ -104,7 +105,7 @@ export class CropRotate {
 
             this.lockAspectRatio = false;
             this.previousRotation = this.rotation;
-            this.gridType = 'cross'; // Set default grid type
+            this.gridType = 'cross';
             this.setupCropControls();
             this.drawCropOverlay();
         };
@@ -149,18 +150,24 @@ export class CropRotate {
                 <input type="range" id="cropRotation" min="-180" max="180" value="${this.rotation}">
                 <span id="rotation-value" style="cursor: pointer;">${this.rotation}°</span>
             </div>
-            <div class="crop-control-group">
-                <label for="aspect-ratio">Aspect Ratio:</label>
-                <select id="aspect-ratio">
-                    <option value="free">Free</option>
-                    <option value="1:1">1:1 (Square)</option>
-                    <option value="4:3">4:3</option>
-                    <option value="3:2">3:2</option>
-                    <option value="16:9">16:9</option>
-                    <option value="9:16">9:16</option>
-                    <option value="5:4">5:4</option>
-                    <option value="4:5">4:5</option>
-                </select>
+            <div class="crop-control-group aspect-lock-group">
+                <div class="aspect-ratio-wrapper">
+                    <label for="aspect-ratio">Aspect Ratio:</label>
+                    <select id="aspect-ratio">
+                        <option value="free">Free</option>
+                        <option value="1:1">1:1 (Square)</option>
+                        <option value="4:3">4:3</option>
+                        <option value="3:2">3:2</option>
+                        <option value="16:9">16:9</option>
+                        <option value="9:16">9:16</option>
+                        <option value="5:4">5:4</option>
+                        <option value="4:5">4:5</option>
+                    </select>
+                </div>
+                <div class="crop-lock-group">
+                    <input type="checkbox" id="lock-aspect" ${this.lockAspectRatio ? 'checked' : ''}>
+                    <label for="lock-aspect">Lock Aspect Ratio</label>
+                </div>
             </div>
             <div class="crop-control-group">
                 <label for="grid-type">Grid Overlay:</label>
@@ -177,10 +184,6 @@ export class CropRotate {
                 <button id="crop-restore">Reset</button>
                 <button id="crop-confirm">Apply</button>
                 <button id="crop-skip">Cancel</button>
-            </div>
-            <div class="crop-lock-group">
-                <input type="checkbox" id="lock-aspect" ${this.lockAspectRatio ? 'checked' : ''}>
-                <label for="lock-aspect">Lock Aspect Ratio</label>
             </div>
         `;
 
@@ -295,9 +298,11 @@ export class CropRotate {
 
         lockCheckbox.addEventListener('change', (e) => {
             this.lockAspectRatio = e.target.checked;
+            lockCheckbox.checked = this.lockAspectRatio; // Ensure checkbox reflects the state
             if (this.lockAspectRatio && aspectRatioSelect.value === 'free') {
                 this.aspectRatio = this.cropRect.width / this.cropRect.height;
             }
+            this.drawCropOverlay(); // Redraw to apply the lock if needed
         });
 
         const closeBtn = this.cropModal.querySelector('.modal-close-btn');
@@ -308,14 +313,16 @@ export class CropRotate {
         const rotatedBounds = this.getRotatedImageBounds(this.originalWidth, this.originalHeight, this.rotation, this.fixedScale);
         let newWidth, newHeight;
 
+        const lockCheckbox = document.getElementById('lock-aspect');
+
         if (ratioStr === 'free') {
             this.lockAspectRatio = false;
-            document.getElementById('lock-aspect').checked = false;
+            lockCheckbox.checked = false;
             return;
         }
 
         this.lockAspectRatio = true;
-        document.getElementById('lock-aspect').checked = true;
+        lockCheckbox.checked = true;
 
         const [widthRatio, heightRatio] = ratioStr.split(':').map(Number);
         this.aspectRatio = widthRatio / heightRatio;
@@ -818,50 +825,114 @@ export class CropRotate {
 
         if (this.isDragging === 'top-left') {
             newWidth = this.clamp(this.cropRect.x + this.cropRect.width - x, 10, this.cropRect.x + this.cropRect.width - bounds.x);
-            newHeight = this.lockAspectRatio ? newWidth / this.aspectRatio : this.clamp(this.cropRect.y + this.cropRect.height - y, 10, this.cropRect.y + this.cropRect.height - bounds.y);
+            if (this.lockAspectRatio) {
+                newHeight = newWidth / this.aspectRatio;
+                if (newHeight > this.cropRect.y + this.cropRect.height - bounds.y) {
+                    newHeight = this.cropRect.y + this.cropRect.height - bounds.y;
+                    newWidth = newHeight * this.aspectRatio;
+                }
+            } else {
+                newHeight = this.clamp(this.cropRect.y + this.cropRect.height - y, 10, this.cropRect.y + this.cropRect.height - bounds.y);
+            }
             this.cropRect.x = this.clamp(x, bounds.x, this.cropRect.x + this.cropRect.width - 10);
             this.cropRect.y = this.lockAspectRatio ? this.cropRect.y + this.cropRect.height - newHeight : this.clamp(y, bounds.y, this.cropRect.y + this.cropRect.height - 10);
             this.cropRect.width = newWidth;
             this.cropRect.height = newHeight;
         } else if (this.isDragging === 'top-right') {
             newWidth = this.clamp(x - this.cropRect.x, 10, bounds.x + bounds.width - this.cropRect.x);
-            newHeight = this.lockAspectRatio ? newWidth / this.aspectRatio : this.clamp(this.cropRect.y + this.cropRect.height - y, 10, this.cropRect.y + this.cropRect.height - bounds.y);
+            if (this.lockAspectRatio) {
+                newHeight = newWidth / this.aspectRatio;
+                if (newHeight > this.cropRect.y + this.cropRect.height - bounds.y) {
+                    newHeight = this.cropRect.y + this.cropRect.height - bounds.y;
+                    newWidth = newHeight * this.aspectRatio;
+                }
+            } else {
+                newHeight = this.clamp(this.cropRect.y + this.cropRect.height - y, 10, this.cropRect.y + this.cropRect.height - bounds.y);
+            }
             this.cropRect.y = this.lockAspectRatio ? this.cropRect.y + this.cropRect.height - newHeight : this.clamp(y, bounds.y, this.cropRect.y + this.cropRect.height - 10);
             this.cropRect.width = newWidth;
             this.cropRect.height = newHeight;
         } else if (this.isDragging === 'bottom-left') {
             newWidth = this.clamp(this.cropRect.x + this.cropRect.width - x, 10, this.cropRect.x + this.cropRect.width - bounds.x);
-            newHeight = this.lockAspectRatio ? newWidth / this.aspectRatio : this.clamp(y - this.cropRect.y, 10, bounds.y + bounds.height - this.cropRect.y);
+            if (this.lockAspectRatio) {
+                newHeight = newWidth / this.aspectRatio;
+                if (newHeight > bounds.y + bounds.height - this.cropRect.y) {
+                    newHeight = bounds.y + bounds.height - this.cropRect.y;
+                    newWidth = newHeight * this.aspectRatio;
+                }
+            } else {
+                newHeight = this.clamp(y - this.cropRect.y, 10, bounds.y + bounds.height - this.cropRect.y);
+            }
             this.cropRect.x = this.clamp(x, bounds.x, this.cropRect.x + this.cropRect.width - 10);
             this.cropRect.width = newWidth;
             this.cropRect.height = newHeight;
         } else if (this.isDragging === 'bottom-right') {
             newWidth = this.clamp(x - this.cropRect.x, 10, bounds.x + bounds.width - this.cropRect.x);
-            newHeight = this.lockAspectRatio ? newWidth / this.aspectRatio : this.clamp(y - this.cropRect.y, 10, bounds.y + bounds.height - this.cropRect.y);
+            if (this.lockAspectRatio) {
+                newHeight = newWidth / this.aspectRatio;
+                if (newHeight > bounds.y + bounds.height - this.cropRect.y) {
+                    newHeight = bounds.y + bounds.height - this.cropRect.y;
+                    newWidth = newHeight * this.aspectRatio;
+                }
+            } else {
+                newHeight = this.clamp(y - this.cropRect.y, 10, bounds.y + bounds.height - this.cropRect.y);
+            }
             this.cropRect.width = newWidth;
             this.cropRect.height = newHeight;
         } else if (this.isDragging === 'left') {
             newWidth = this.clamp(this.cropRect.x + this.cropRect.width - x, 10, this.cropRect.x + this.cropRect.width - bounds.x);
-            newHeight = this.lockAspectRatio ? newWidth / this.aspectRatio : this.cropRect.height;
+            if (this.lockAspectRatio) {
+                newHeight = newWidth / this.aspectRatio;
+                if (newHeight > bounds.y + bounds.height - this.cropRect.y) {
+                    newHeight = bounds.y + bounds.height - this.cropRect.y;
+                    newWidth = newHeight * this.aspectRatio;
+                }
+                this.cropRect.height = newHeight;
+            } else {
+                newHeight = this.cropRect.height;
+            }
             this.cropRect.x = this.clamp(x, bounds.x, this.cropRect.x + this.cropRect.width - 10);
             this.cropRect.width = newWidth;
-            if (this.lockAspectRatio) this.cropRect.height = newHeight;
         } else if (this.isDragging === 'right') {
             newWidth = this.clamp(x - this.cropRect.x, 10, bounds.x + bounds.width - this.cropRect.x);
-            newHeight = this.lockAspectRatio ? newWidth / this.aspectRatio : this.cropRect.height;
+            if (this.lockAspectRatio) {
+                newHeight = newWidth / this.aspectRatio;
+                if (newHeight > bounds.y + bounds.height - this.cropRect.y) {
+                    newHeight = bounds.y + bounds.height - this.cropRect.y;
+                    newWidth = newHeight * this.aspectRatio;
+                }
+                this.cropRect.height = newHeight;
+            } else {
+                newHeight = this.cropRect.height;
+            }
             this.cropRect.width = newWidth;
-            if (this.lockAspectRatio) this.cropRect.height = newHeight;
         } else if (this.isDragging === 'top') {
             newHeight = this.clamp(this.cropRect.y + this.cropRect.height - y, 10, this.cropRect.y + this.cropRect.height - bounds.y);
-            newWidth = this.lockAspectRatio ? newHeight * this.aspectRatio : this.cropRect.width;
+            if (this.lockAspectRatio) {
+                newWidth = newHeight * this.aspectRatio;
+                if (newWidth > bounds.x + bounds.width - this.cropRect.x) {
+                    newWidth = bounds.x + bounds.width - this.cropRect.x;
+                    newHeight = newWidth / this.aspectRatio;
+                }
+                this.cropRect.width = newWidth;
+            } else {
+                newWidth = this.cropRect.width;
+            }
             this.cropRect.y = this.clamp(y, bounds.y, this.cropRect.y + this.cropRect.height - 10);
             this.cropRect.height = newHeight;
-            if (this.lockAspectRatio) this.cropRect.width = newWidth;
         } else if (this.isDragging === 'bottom') {
             newHeight = this.clamp(y - this.cropRect.y, 10, bounds.y + bounds.height - this.cropRect.y);
-            newWidth = this.lockAspectRatio ? newHeight * this.aspectRatio : this.cropRect.width;
+            if (this.lockAspectRatio) {
+                newWidth = newHeight * this.aspectRatio;
+                if (newWidth > bounds.x + bounds.width - this.cropRect.x) {
+                    newWidth = bounds.x + bounds.width - this.cropRect.x;
+                    newHeight = newWidth / this.aspectRatio;
+                }
+                this.cropRect.width = newWidth;
+            } else {
+                newWidth = this.cropRect.width;
+            }
             this.cropRect.height = newHeight;
-            if (this.lockAspectRatio) this.cropRect.width = newWidth;
         }
     }
 }

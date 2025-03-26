@@ -1,3 +1,4 @@
+/* style.css */
 body {
     font-family: Arial, sans-serif;
     margin: 0;
@@ -6,9 +7,9 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 80vh;
-    overflow: hidden;
-    -webkit-tap-highlight-color: transparent; /* Prevents tap highlight in Safari */
+    min-height: 100vh;
+    overflow: auto;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .container {
@@ -29,6 +30,7 @@ body {
     align-items: center;
     height: 100%;
     overflow: hidden;
+    padding: 10px;
 }
 
 #canvas {
@@ -37,6 +39,7 @@ body {
     height: auto;
     object-fit: contain;
     transition: opacity 0.1s ease;
+    touch-action: pinch-zoom;
 }
 
 #canvas.resizing {
@@ -50,14 +53,14 @@ body {
 
 .controls {
     width: 100%;
-    border-radius: 20px !important;
+    border-radius: 20px;
     background-color: #fff;
-    padding: 25px 15px 15px 15px ;
-    border-radius: 5px;
+    padding: 25px 15px 15px 15px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     overflow-y: auto;
     position: relative;
     height: 88%;
+    -webkit-overflow-scrolling: touch;
 }
 
 .adjustment-container {
@@ -68,7 +71,7 @@ body {
     border-radius: 5px;
     margin: 0 4px;
     background: #f8f8f8;
-    -webkit-overflow-scrolling: touch; /* Smooth scrolling in Safari */
+    -webkit-overflow-scrolling: touch;
 }
 
 .adjustment-container::-webkit-scrollbar {
@@ -104,7 +107,7 @@ body {
 .adjustments {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 12px;
     font-size: 12px;
 }
 
@@ -112,10 +115,10 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 5px;
+    gap: 8px;
+    padding: 2px 0;
 }
 
-/* Button styles with vendor prefixes for appearance */
 button {
     padding: 9px 0;
     margin: 5px 3px;
@@ -126,92 +129,105 @@ button {
     border: none;
     border-radius: 21px;
     width: 90px;
-    -webkit-appearance: none; /* For Safari and older Chrome */
-    -moz-appearance: none;    /* For Firefox */
-    appearance: none;         /* Standard property */
+    touch-action: manipulation;
 }
 
 button:hover {
     background-color: #0056b3;
 }
 
-/* Range input styles with vendor prefixes */
 input[type="range"] {
     width: 52%;
-    height: 5px;
+    height: 6px;
     accent-color: rgb(0, 0, 0);
-    -webkit-appearance: none; /* For Safari and older Chrome */
-    -moz-appearance: none;    /* For Firefox */
-    appearance: none;         /* Standard property */
-    background: #ddd;         /* Custom background */
-    border-radius: 4px;       /* Custom border radius */
-    outline: none;            /* Remove default outline */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background: #ddd;
+    border-radius: 4px;
+    outline: none;
+    padding: 5px 0;
 }
 
 input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: 10px;
-    height: 10px;
+    width: 16px;
+    height: 16px;
     background: #000000;
     border-radius: 50%;
     cursor: pointer;
     border: 1px solid #ffffff;
+    box-shadow: 0 0 2px rgba(0,0,0,0.3);
 }
 
 input[type="range"]::-moz-range-thumb {
-    width: 10px;
-    height: 10px;
+    width: 16px;
+    height: 16px;
     background: #000000;
     border-radius: 50%;
     cursor: pointer;
     border: 1px solid #ffffff;
+    box-shadow: 0 0 2px rgba(0,0,0,0.3);
 }
 
 input[type="range"]::-ms-thumb {
-    width: 10px;
-    height: 10px;
+    width: 16px;
+    height: 16px;
     background: #000000;
     border-radius: 50%;
     cursor: pointer;
     border: 1px solid #ffffff;
+    box-shadow: 0 0 2px rgba(0,0,0,0.3);
 }
 
-/* Checkbox and radio styles */
 input[type="checkbox"],
 input[type="radio"] {
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
     border: 1px solid #ccc;
     background: #fff;
     cursor: pointer;
-    -webkit-appearance: none; /* For Safari and older Chrome */
-    -moz-appearance: none;    /* For Firefox */
-    appearance: none;         /* Standard property */
+    border-radius: 3px;
+    position: relative;
 }
 
-/* Select styles */
+input[type="checkbox"]:checked {
+    background: #000;
+    border-color: #000;
+}
+
+input[type="checkbox"]:checked::after {
+    content: '\2713'; /* Checkmark character */
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #fff;
+    font-size: 12px;
+    font-weight: bold;
+}
+
 select {
     border: 1px solid #ccc;
-    padding: 4px;
+    padding: 6px;
     background: #fff;
     cursor: pointer;
-    -webkit-appearance: none; /* For Safari and older Chrome */
-    -moz-appearance: none;    /* For Firefox */
-    appearance: none;         /* Standard property */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    min-width: 100px;
 }
 
-/* Textarea styles */
 textarea {
     border: 1px solid #ccc;
     padding: 4px;
     resize: vertical;
-    -webkit-appearance: none; /* For Safari and older Chrome */
-    -moz-appearance: none;    /* For Firefox */
-    appearance: none;         /* Standard property */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
 }
 
-/* Crop Modal Styles */
 .modal {
     display: none;
     position: fixed;
@@ -223,6 +239,7 @@ textarea {
     background-color: rgba(0, 0, 0, 0.5);
     justify-content: center;
     align-items: center;
+    padding: 15px;
 }
 
 .modal-content {
@@ -231,9 +248,10 @@ textarea {
     border-radius: 5px;
     position: relative;
     max-width: 90%;
-    max-height: 90%;
+    max-height: 90vh;
     min-width: 600px;
     overflow: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .modal-close-btn {
@@ -242,39 +260,70 @@ textarea {
     right: 10px;
     cursor: pointer;
     font-size: 24px;
+    padding: 5px;
 }
 
 .crop-control-group,
-.crop-button-group,
+.crop-button-group {
+    margin: 12px 0;
+}
+
+.aspect-lock-group {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.aspect-ratio-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
 .crop-lock-group {
-    margin: 10px 0;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.crop-lock-group input[type="checkbox"] {
+    margin: 0;
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.crop-lock-group label {
+    font-size: 14px;
+    line-height: 1;
 }
 
 .crop-button-group button {
     margin: 0 5px;
-    padding: 5px 10px;
+    padding: 8px 15px;
     width: auto;
+    min-width: 80px;
 }
 
 #crop-canvas {
     max-width: 100%;
     max-height: 700px;
-    touch-action: none; /* Prevents default touch behaviors */
+    margin: 0 15px;
+    touch-action: none;
 }
 
-/* Disable touch callout and text selection for specific elements */
 .image-container,
 .controls,
 button,
 input[type="range"],
 #canvas,
 #crop-canvas {
-    -webkit-touch-callout: none; /* Disable callout on Webkit browsers */
-    -webkit-user-select: none;   /* Disable text selection on Webkit browsers */
-    user-select: none;           /* Standard property for all modern browsers */
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
 }
 
-/* Ensure text selection is still possible for text-heavy areas */
 p,
 label,
 textarea,
@@ -285,11 +334,10 @@ select {
     user-select: auto;
 }
 
-/* Mobile view */
 @media (max-width: 768px) {
     body {
-        padding: 0;
-        height: 100vh; /* Full viewport height */
+        padding: 10px;
+        min-height: 100vh;
         overflow: auto;
         display: flex;
         flex-direction: column;
@@ -299,15 +347,15 @@ select {
         flex-direction: column;
         height: auto;
         align-items: center;
-        flex: 1;
-        padding-bottom: 200px; /* Space for the fixed controls at the bottom */
+        padding-bottom: 220px;
     }
 
     .image-container {
         width: 100%;
         height: auto;
         max-height: 50vh;
-        margin-bottom: 20px; /* Ensure space between canvas and controls */
+        margin-bottom: 10px;
+        padding: 5px;
     }
 
     .controls-wrapper {
@@ -316,57 +364,94 @@ select {
         left: 0;
         width: 100%;
         height: auto;
-        z-index: 100; /* Ensure controls are above other elements */
+        z-index: 100;
+        padding: 0 5px;
     }
 
     .controls {
-        width: 100%;
+        width: auto;
         height: auto;
-        max-height: 200px; /* Limit height to avoid taking too much space */
+        max-height: 220px;
         overflow-y: auto;
-        border-radius: 0;
-        box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1); /* Shadow at the top */
-        padding: 10px;
-        -webkit-overflow-scrolling: touch; /* Smooth scrolling in Safari */
+        border-radius: 20px 20px 0 0;
+        box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
+        padding: 15px;
     }
 
     .adjustment-container {
-        max-height: 80px; /* Adjusted for mobile */
+        max-height: 100px;
+        margin: 0;
+    }
+
+    .adjustments {
+        gap: 10px;
     }
 
     .buttons {
-        padding-top: 5px !important;
+        padding-top: 10px !important;
         display: flex;
         flex-wrap: wrap;
         justify-content: center;
-        gap: 5px;
+        gap: 8px;
         position: sticky;
         bottom: 0;
-        background-color: #fff; /* Ensure background is visible when sticky */
+        background-color: #fff;
         padding: 10px 0;
-        z-index: 101; /* Ensure buttons are above other elements in controls */
+        z-index: 101;
     }
 
     button {
-        max-width: 80px;
+        max-width: 85px;
         font-size: 12px;
-        margin: 5px 0 0 0;
+        padding: 8px 0;
+        margin: 2px;
+    }
+
+    input[type="range"] {
+        width: 55%;
+        height: 6px;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+        width: 20px;
+        height: 20px;
+    }
+
+    input[type="range"]::-moz-range-thumb {
+        width: 20px;
+        height: 20px;
+    }
+
+    input[type="range"]::-ms-thumb {
+        width: 20px;
+        height: 20px;
+    }
+
+    .modal {
+        padding: 10px;
     }
 
     .modal-content {
         min-width: 100%;
-        padding: 10px;
-        max-height: 80vh; /* Ensure modal doesn't overflow viewport */
+        padding: 15px;
+        max-height: 85vh;
+        border-radius: 10px;
+    }
+
+    .aspect-lock-group {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
     }
 
     .crop-button-group button {
-        padding: 8px 15px;
+        padding: 10px 20px;
+        min-width: 90px;
     }
 
-    /* Safari-specific adjustments */
     @supports (-webkit-touch-callout: none) {
         .controls {
-            -webkit-backdrop-filter: blur(5px); /* Add a blur effect for better readability */
+            -webkit-backdrop-filter: blur(5px);
             backdrop-filter: blur(5px);
         }
     }
