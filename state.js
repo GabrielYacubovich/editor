@@ -1,3 +1,4 @@
+// state.js
 export class State {
     constructor(canvas) {
         this.canvas = canvas;
@@ -26,15 +27,15 @@ export class State {
             grayscale: 0.0,
             invert: 0.0,
             rgbSplit: 0.0,
-            scanLines: 0.0,
+            filmGrain: 0.0,
             waveDistortion: 0.0,
-            chromaticAberration: 0.0,
-            digitalNoise: 0.0,
             blockGlitch: 0.0,
             ghosting: 0.0,
-            colorBleed: 0.0,
             fractalDistortion: 0.0,
-            randomTint: 0.0
+            colorShift: 0.0,
+            pixelNoise: 0.0,
+            scratchTexture: 0.0,
+            organicDistortion: 0.0
         };
         this.aspectRatio = 1;
         this.history = [];
@@ -91,15 +92,15 @@ export class State {
             grayscale: 0.0,
             invert: 0.0,
             rgbSplit: 0.0,
-            scanLines: 0.0,
+            filmGrain: 0.0,
             waveDistortion: 0.0,
-            chromaticAberration: 0.0,
-            digitalNoise: 0.0,
             blockGlitch: 0.0,
             ghosting: 0.0,
-            colorBleed: 0.0,
             fractalDistortion: 0.0,
-            randomTint: 0.0
+            colorShift: 0.0,
+            pixelNoise: 0.0,
+            scratchTexture: 0.0,
+            organicDistortion: 0.0
         };
         this.showOriginal = false;
         this.history = [];
@@ -137,15 +138,15 @@ export class State {
             grayscale: 0.0,
             invert: 0.0,
             rgbSplit: 0.0,
-            scanLines: 0.0,
+            filmGrain: 0.0,
             waveDistortion: 0.0,
-            chromaticAberration: 0.0,
-            digitalNoise: 0.0,
             blockGlitch: 0.0,
             ghosting: 0.0,
-            colorBleed: 0.0,
             fractalDistortion: 0.0,
-            randomTint: 0.0
+            colorShift: 0.0,
+            pixelNoise: 0.0,
+            scratchTexture: 0.0,
+            organicDistortion: 0.0
         };
         this.aspectRatio = 1;
         this.history = [];

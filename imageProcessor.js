@@ -1,3 +1,4 @@
+// imageProcessor.js
 export class ImageProcessor {
     constructor(gl, state) {
         this.gl = gl;
@@ -44,15 +45,15 @@ export class ImageProcessor {
             uniform float u_grayscale;
             uniform float u_invert;
             uniform float u_rgbSplit;
-            uniform float u_scanLines;
+            uniform float u_filmGrain;
             uniform float u_waveDistortion;
-            uniform float u_chromaticAberration;
-            uniform float u_digitalNoise;
             uniform float u_blockGlitch;
             uniform float u_ghosting;
-            uniform float u_colorBleed;
             uniform float u_fractalDistortion;
-            uniform float u_randomTint;
+            uniform float u_colorShift;
+            uniform float u_pixelNoise;
+            uniform float u_scratchTexture;
+            uniform float u_organicDistortion;
             uniform bool u_showOriginal;
             varying vec2 v_texCoord;
 
@@ -107,7 +108,7 @@ export class ImageProcessor {
                 vec4 color = vec4(0.0);
 
                 if (!u_showOriginal) {
-                    // Apply glitch effects
+                    // Apply distortion effects
                     vec2 distortedUV = uv;
 
                     // Wave Distortion
@@ -122,17 +123,20 @@ export class ImageProcessor {
                         distortedUV += vec2(sin(n * 10.0), cos(n * 10.0)) * u_fractalDistortion * 0.05;
                     }
 
-                    // Color Bleed
-                    vec4 baseColor = texture2D(u_image, distortedUV);
-                    if (u_colorBleed > 0.0) {
-                        float bleed = random(vec2(floor(uv.x * 50.0), 0.0)) * u_colorBleed;
-                        baseColor.rgb = mix(baseColor.rgb, texture2D(u_image, distortedUV + vec2(0.0, bleed)).rgb, 0.5);
+                    // Organic Distortion
+                    if (u_organicDistortion > 0.0) {
+                        float n1 = noise(distortedUV * 3.0 + vec2(0.5));
+                        float n2 = noise(distortedUV * 3.0 + vec2(-0.5));
+                        distortedUV.x += sin(n1 * 6.0) * u_organicDistortion * 0.03;
+                        distortedUV.y += cos(n2 * 6.0) * u_organicDistortion * 0.03;
                     }
 
-                    // RGB Split & Chromatic Aberration
-                    if (u_rgbSplit > 0.0 || u_chromaticAberration > 0.0) {
-                        float split = u_rgbSplit + u_chromaticAberration;
-                        vec2 offset = vec2(split, 0.0);
+                    // Base color
+                    vec4 baseColor = texture2D(u_image, distortedUV);
+
+                    // RGB Split
+                    if (u_rgbSplit > 0.0) {
+                        vec2 offset = vec2(u_rgbSplit, 0.0);
                         color.r = texture2D(u_image, distortedUV + offset).r;
                         color.g = baseColor.g;
                         color.b = texture2D(u_image, distortedUV - offset).b;
@@ -156,8 +160,8 @@ export class ImageProcessor {
                     // Other adjustments
                     float avg = (color.r + color.g + color.b) / 3.0;
                     float maxColor = max(max(color.r, color.g), color.b);
-                    float amt = (maxColor - avg) * u_vibrance;
-                    color.rgb += (maxColor - color.rgb) * amt;
+                    float amt = (maxColor - avg) * abs(u_vibrance);
+                    color.rgb += (maxColor - color.rgb) * (u_vibrance > 0.0 ? amt : -amt);
 
                     float luminance = dot(color.rgb, vec3(0.299, 0.587, 0.114));
                     if (luminance > 0.5 && luminance <= 0.75) {
@@ -184,40 +188,52 @@ export class ImageProcessor {
                     color.b -= u_temperature * 0.2;
                     color.g += u_tint * 0.2;
 
-                    // Scan Lines
-                    if (u_scanLines > 0.0) {
-                        float scan = sin(uv.y * 800.0) * u_scanLines * 0.1;
-                        color.rgb += vec3(scan);
-                    }
-
-                    // Digital Noise
-                    if (u_digitalNoise > 0.0) {
-                        float n = noise(uv * 1000.0) * u_digitalNoise * 0.2;
-                        color.rgb += vec3(n);
+                    // Film Grain
+                    if (u_filmGrain > 0.0) {
+                        float grain = noise(uv * 1000.0) * u_filmGrain * 0.2;
+                        color.rgb += vec3(grain);
                     }
 
                     // Block Glitch
                     if (u_blockGlitch > 0.0) {
-                        float block = floor(random(floor(uv * 20.0)) * u_blockGlitch * 10.0);
+                        float block = floor(random(floor(uv * 50.0)) * u_blockGlitch * 10.0);
                         if (block > 0.5) {
                             color.rgb = texture2D(u_image, uv + vec2(block * 0.1, 0.0)).rgb;
                         }
                     }
 
-                    // Random Tint
-                    if (u_randomTint > 0.0) {
-                        vec3 tint = vec3(
-                            random(uv + vec2(0.1)),
-                            random(uv + vec2(0.2)),
-                            random(uv + vec2(0.3))
+                    // Color Shift
+                    if (u_colorShift > 0.0) {
+                        vec3 shift = vec3(
+                            sin(uv.x * 10.0) * u_colorShift,
+                            cos(uv.y * 10.0) * u_colorShift,
+                            sin(uv.x * uv.y * 10.0) * u_colorShift
                         );
-                        color.rgb = mix(color.rgb, color.rgb * tint, u_randomTint);
+                        color.rgb += shift * 0.2;
                     }
 
                     // Ghosting
                     if (u_ghosting > 0.0) {
                         vec4 ghost = texture2D(u_image, uv + vec2(u_ghosting * 0.1, 0.0));
                         color.rgb = mix(color.rgb, ghost.rgb, u_ghosting);
+                    }
+
+                    // Pixel Noise
+                    if (u_pixelNoise > 0.0) {
+                        vec3 noiseColor = vec3(
+                            random(uv * 1000.0),
+                            random(uv * 1000.0 + vec2(1.0)),
+                            random(uv * 1000.0 + vec2(2.0))
+                        );
+                        color.rgb += noiseColor * u_pixelNoise * 0.3;
+                    }
+
+                    // Scratch Texture
+                    if (u_scratchTexture > 0.0) {
+                        float scratch = noise(vec2(uv.x * 2.0, uv.y * 100.0));
+                        if (scratch > 0.9 - u_scratchTexture * 0.5) {
+                            color.rgb += vec3(0.8) * u_scratchTexture;
+                        }
                     }
 
                     // Final effects
@@ -339,15 +355,15 @@ export class ImageProcessor {
         this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_grayscale'), this.state.adjustments.grayscale);
         this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_invert'), this.state.adjustments.invert);
         this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_rgbSplit'), this.state.adjustments.rgbSplit);
-        this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_scanLines'), this.state.adjustments.scanLines);
+        this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_filmGrain'), this.state.adjustments.filmGrain);
         this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_waveDistortion'), this.state.adjustments.waveDistortion);
-        this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_chromaticAberration'), this.state.adjustments.chromaticAberration);
-        this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_digitalNoise'), this.state.adjustments.digitalNoise);
         this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_blockGlitch'), this.state.adjustments.blockGlitch);
         this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_ghosting'), this.state.adjustments.ghosting);
-        this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_colorBleed'), this.state.adjustments.colorBleed);
         this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_fractalDistortion'), this.state.adjustments.fractalDistortion);
-        this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_randomTint'), this.state.adjustments.randomTint);
+        this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_colorShift'), this.state.adjustments.colorShift);
+        this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_pixelNoise'), this.state.adjustments.pixelNoise);
+        this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_scratchTexture'), this.state.adjustments.scratchTexture);
+        this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_organicDistortion'), this.state.adjustments.organicDistortion);
         this.gl.uniform1i(this.gl.getUniformLocation(this.program, 'u_showOriginal'), this.state.showOriginal ? 1 : 0);
 
         this.gl.activeTexture(this.gl.TEXTURE0);

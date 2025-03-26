@@ -1,3 +1,4 @@
+// ui.js
 export class UI {
     constructor(state, imageProcessor, canvas) {
         this.state = state;
@@ -12,9 +13,9 @@ export class UI {
             'brightness', 'contrast', 'saturation', 'hue', 'exposure', 'highlights', 'shadows', 
             'blacks', 'whites', 'temperature', 'tint', 'sharpness', 'vignette', 'noise', 
             'clarity', 'opacity', 'gamma', 'sepia', 'vibrance', 'grayscale', 'invert',
-            'rgbSplit', 'scanLines', 'waveDistortion', 'chromaticAberration',
-            'digitalNoise', 'blockGlitch', 'ghosting', 'colorBleed', 
-            'fractalDistortion', 'randomTint'
+            'rgbSplit', 'filmGrain', 'waveDistortion', 'blockGlitch', 'ghosting', 
+            'fractalDistortion', 'colorShift', 'pixelNoise', 'scratchTexture', 
+            'organicDistortion'
         ];
 
         sliders.forEach(slider => {
@@ -137,15 +138,15 @@ export class UI {
         document.getElementById('grayscale').value = 0.0;
         document.getElementById('invert').value = 0.0;
         document.getElementById('rgbSplit').value = 0.0;
-        document.getElementById('scanLines').value = 0.0;
+        document.getElementById('filmGrain').value = 0.0;
         document.getElementById('waveDistortion').value = 0.0;
-        document.getElementById('chromaticAberration').value = 0.0;
-        document.getElementById('digitalNoise').value = 0.0;
         document.getElementById('blockGlitch').value = 0.0;
         document.getElementById('ghosting').value = 0.0;
-        document.getElementById('colorBleed').value = 0.0;
         document.getElementById('fractalDistortion').value = 0.0;
-        document.getElementById('randomTint').value = 0.0;
+        document.getElementById('colorShift').value = 0.0;
+        document.getElementById('pixelNoise').value = 0.0;
+        document.getElementById('scratchTexture').value = 0.0;
+        document.getElementById('organicDistortion').value = 0.0;
     }
 
     updateSlidersFromState() {
