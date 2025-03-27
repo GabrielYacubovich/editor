@@ -1,7 +1,8 @@
+/* style.css */
 body {
     font-family: Arial, sans-serif;
     margin: 0;
-    padding:  10px 20px 20px 20px;
+    padding:  100px 20px 20px 20px;
     background-color: #f0f0f0;
     display: flex;
     justify-content: center;
@@ -20,17 +21,18 @@ body {
     height: 100%;
     margin: 0 auto;
     gap: 20px;
-    justify-content: center; /* Ensure horizontal centering */
+    justify-content: center;
 }
 
 .image-container {
     flex: 1;
     display: flex;
     justify-content: center;
-    align-items: flex-start; /* Align items to the top */
+    align-items: flex-start;
     height: 100%;
     overflow: hidden;
-    margin-top: 0; /* Remove margin-top to avoid offset */
+    margin-top: 0;
+    position: relative;
 }
 
 #canvas {
@@ -47,10 +49,22 @@ body {
     opacity: 0;
 }
 
+.magnifier {
+    position: fixed; /* Changed to fixed to stay relative to viewport */
+    pointer-events: none;
+    border-radius: 50%;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+    z-index: 100; /* Default z-index when inactive */
+}
+
+.magnifier.active {
+    z-index: 2000; /* Higher z-index when active to stay above everything */
+}
+
 .controls-wrapper {
     width: 300px;
     height: 100%;
-    margin-top: 0; /* Ensure no offset from the top */
+    margin-top: 0;
 }
 
 .controls {
@@ -62,7 +76,7 @@ body {
     overflow-y: auto;
     position: relative;
     height: 88%;
-    margin-top: 13px; /* Align to the top */
+    margin-top: 0px;
     -webkit-overflow-scrolling: touch;
 }
 
@@ -218,6 +232,27 @@ button:hover {
     background-color: #0056b3;
 }
 
+#toggle-zoom {
+    width: 90px;
+}
+
+#zoom-level {
+    width: 70px;
+    padding: 8px 5px;
+    margin: 5px 3px;
+    border-radius: 21px;
+    font-size: 12px;
+    cursor: pointer;
+    background-color: #fff;
+    border: 1px solid #ccc;
+    
+}
+
+#zoom-level:disabled {
+    background-color: #e0e0e0;
+    cursor: not-allowed;
+}
+
 input[type="range"] {
     width: 52%;
     height: 6px;
@@ -280,7 +315,7 @@ input[type="checkbox"]:checked {
 }
 
 input[type="checkbox"]:checked::after {
-    content: '\2713'; /* Checkmark character */
+    content: '\2713';
     position: absolute;
     top: 50%;
     left: 50%;
@@ -489,6 +524,16 @@ select {
         margin: 2px;
     }
 
+    #toggle-zoom {
+        width: 65px;
+    }
+
+    #zoom-level {
+        width: 65px;
+        padding: 7px 5px;
+        display: none;
+    }
+
     input[type="range"] {
         width: 55%;
         height: 6px;
@@ -529,6 +574,12 @@ select {
     .crop-button-group button {
         padding: 10px 20px;
         min-width: 90px;
+    }
+    #zoom-btn {
+        display: none;
+    }
+    #toggle-zoom {
+        display: none;
     }
 
     @supports (-webkit-touch-callout: none) {

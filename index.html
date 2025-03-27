@@ -11,6 +11,7 @@
     <div class="container">
         <div class="image-container">
             <canvas style="max-height: none !important;" id="canvas" width="800" height="600"></canvas>
+            <canvas id="magnifier" class="magnifier" style="display: none;"></canvas>
         </div>
         <div class="controls-wrapper">
             <div class="controls">
@@ -120,6 +121,10 @@
                     <button id="redo">Redo</button>
                     <button id="toggle-original">Original</button>
                     <button id="export">Export</button>
+                    <button class="hidden-mobile" id="toggle-zoom">Zoom</button>
+                    <span class="hidden-mobile" id="zoom-control" style="display: none;">
+                        <input class="hidden-mobile" type="number" id="zoom-level" min="50" max="1000" value="200" style="width: 65px; text-align: right;padding-right: 20px;">
+                    </span>
                 </div>
             </div>
         </div>

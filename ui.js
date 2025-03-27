@@ -1,4 +1,3 @@
-// ui.js
 export class UI {
     constructor(state, imageProcessor, canvas) {
         this.state = state;
@@ -10,11 +9,11 @@ export class UI {
 
     initUI() {
         const sliders = [
-            'brightness', 'contrast', 'saturation', 'hue', 'exposure', 'highlights', 'shadows', 
-            'blacks', 'whites', 'temperature', 'tint', 'sharpness', 'vignette', 'noise', 
+            'brightness', 'contrast', 'saturation', 'hue', 'exposure', 'highlights', 'shadows',
+            'blacks', 'whites', 'temperature', 'tint', 'sharpness', 'vignette', 'noise',
             'clarity', 'opacity', 'gamma', 'sepia', 'vibrance', 'grayscale', 'invert',
-            'rgbSplit', 'filmGrain', 'waveDistortion', 'blockGlitch', 'ghosting', 
-            'fractalDistortion', 'colorShift', 'pixelNoise', 'scratchTexture', 
+            'rgbSplit', 'filmGrain', 'waveDistortion', 'blockGlitch', 'ghosting',
+            'fractalDistortion', 'colorShift', 'pixelNoise', 'scratchTexture',
             'organicDistortion'
         ];
 
@@ -23,17 +22,17 @@ export class UI {
             element.addEventListener('input', (e) => {
                 this.state.setAdjustment(slider, e.target.value);
                 this.debounceRender();
-            });
-            element.addEventListener('change', () => {
-                this.state.commitAdjustment();
-            });
+            }, { passive: true });
+            element.addEventListener('change', () => this.state.commitAdjustment());
         });
 
         document.getElementById('reset').addEventListener('click', () => {
             this.state.reset();
             this.imageProcessor.setImage(this.state.image);
-            this.imageProcessor.render();
-            this.resetSliders();
+            requestAnimationFrame(() => {
+                this.imageProcessor.render();
+                this.resetSliders();
+            });
         });
 
         const exportModal = document.getElementById('export-modal');
@@ -44,17 +43,11 @@ export class UI {
         const cancelBtn = document.getElementById('cancel-btn');
         const exportCloseBtn = exportModal.querySelector('.modal-close-btn');
 
-        const closeModal = () => {
-            exportModal.style.display = 'none';
-        };
+        const closeModal = () => exportModal.style.display = 'none';
 
         formatSelect.addEventListener('change', () => {
-            if (formatSelect.value === 'png') {
-                qualitySelect.disabled = true;
-                qualitySelect.value = '1.0';
-            } else {
-                qualitySelect.disabled = false;
-            }
+            qualitySelect.disabled = formatSelect.value === 'png';
+            if (qualitySelect.disabled) qualitySelect.value = '1.0';
         });
 
         downloadBtn.addEventListener('click', () => {
@@ -75,30 +68,25 @@ export class UI {
         cancelBtn.addEventListener('click', closeModal);
         exportCloseBtn.addEventListener('click', closeModal);
 
-        document.getElementById('export').addEventListener('click', () => {
-            this.showExportModal();
-        });
+        document.getElementById('export').addEventListener('click', () => this.showExportModal());
 
         document.getElementById('undo').addEventListener('click', () => {
             if (this.state.undo()) {
                 this.updateSlidersFromState();
-                this.imageProcessor.render();
+                requestAnimationFrame(() => this.imageProcessor.render());
             }
         });
 
         document.getElementById('redo').addEventListener('click', () => {
             if (this.state.redo()) {
                 this.updateSlidersFromState();
-                this.imageProcessor.render();
+                requestAnimationFrame(() => this.imageProcessor.render());
             }
         });
 
         document.getElementById('toggle-original').addEventListener('click', () => {
             this.state.toggleOriginal();
-            this.imageProcessor.render();
-        });
-
-        document.getElementById('crop').addEventListener('click', () => {
+            requestAnimationFrame(() => this.imageProcessor.render());
         });
     }
 
@@ -109,44 +97,23 @@ export class UI {
         const filenameInput = document.getElementById('filename');
 
         exportModal.style.display = 'flex';
-        formatSelect.value = 'png';
+        formatSelect.value = 'jpeg';
         qualitySelect.value = '1.0';
         filenameInput.value = 'edited-image';
-        qualitySelect.disabled = true;
+        qualitySelect.disabled = false;
     }
 
     resetSliders() {
-        document.getElementById('brightness').value = 1.0;
-        document.getElementById('contrast').value = 1.0;
-        document.getElementById('saturation').value = 1.0;
-        document.getElementById('hue').value = 0.0;
-        document.getElementById('exposure').value = 1.0;
-        document.getElementById('highlights').value = 0.0;
-        document.getElementById('shadows').value = 0.0;
-        document.getElementById('blacks').value = 0.0;
-        document.getElementById('whites').value = 0.0;
-        document.getElementById('temperature').value = 0.0;
-        document.getElementById('tint').value = 0.0;
-        document.getElementById('sharpness').value = 0.0;
-        document.getElementById('vignette').value = 0.0;
-        document.getElementById('noise').value = 0.0;
-        document.getElementById('clarity').value = 0.0;
-        document.getElementById('opacity').value = 1.0;
-        document.getElementById('gamma').value = 1.0;
-        document.getElementById('sepia').value = 0.0;
-        document.getElementById('vibrance').value = 0.0;
-        document.getElementById('grayscale').value = 0.0;
-        document.getElementById('invert').value = 0.0;
-        document.getElementById('rgbSplit').value = 0.0;
-        document.getElementById('filmGrain').value = 0.0;
-        document.getElementById('waveDistortion').value = 0.0;
-        document.getElementById('blockGlitch').value = 0.0;
-        document.getElementById('ghosting').value = 0.0;
-        document.getElementById('fractalDistortion').value = 0.0;
-        document.getElementById('colorShift').value = 0.0;
-        document.getElementById('pixelNoise').value = 0.0;
-        document.getElementById('scratchTexture').value = 0.0;
-        document.getElementById('organicDistortion').value = 0.0;
+        const defaults = {
+            brightness: 1, contrast: 1, saturation: 1, hue: 0, exposure: 1, highlights: 0, shadows: 0,
+            blacks: 0, whites: 0, temperature: 0, tint: 0, sharpness: 0, vignette: 0, noise: 0,
+            clarity: 0, opacity: 1, gamma: 1, sepia: 0, vibrance: 0, grayscale: 0, invert: 0,
+            rgbSplit: 0, filmGrain: 0, waveDistortion: 0, blockGlitch: 0, ghosting: 0,
+            fractalDistortion: 0, colorShift: 0, pixelNoise: 0, scratchTexture: 0, organicDistortion: 0
+        };
+        for (let key in defaults) {
+            document.getElementById(key).value = defaults[key];
+        }
     }
 
     updateSlidersFromState() {
@@ -156,7 +123,7 @@ export class UI {
     }
 
     debounceRender() {
-        if (this.renderTimeout) clearTimeout(this.renderTimeout);
-        this.renderTimeout = setTimeout(() => this.imageProcessor.render(), 100);
+        clearTimeout(this.renderTimeout);
+        this.renderTimeout = setTimeout(() => requestAnimationFrame(() => this.imageProcessor.render()), 50);
     }
 }
