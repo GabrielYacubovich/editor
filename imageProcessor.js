@@ -7,7 +7,7 @@ export class ImageProcessor {
         this.bgTexture = null;
         this.positionBuffer = null;
         this.texCoordBuffer = null;
-        this.bgPositionBuffer = null; // New buffer for background positions
+        this.bgPositionBuffer = null;
         this.initWebGL();
     }
 
@@ -16,10 +16,9 @@ export class ImageProcessor {
             attribute vec2 a_position;
             attribute vec2 a_texCoord;
             varying vec2 v_texCoord;
-            uniform float u_bgRotation; // Pass rotation to vertex shader
+            uniform float u_bgRotation;
             void main() {
                 vec2 pos = a_position;
-                // Apply rotation to background vertices only (handled in render)
                 gl_Position = vec4(pos, 0.0, 1.0);
                 v_texCoord = a_texCoord;
             }
@@ -61,10 +60,10 @@ export class ImageProcessor {
             uniform float u_scratchTexture;
             uniform float u_organicDistortion;
             uniform int u_showOriginal;
-            uniform float u_bgCropX;      // Normalized X offset of background crop
-            uniform float u_bgCropY;      // Normalized Y offset of background crop
-            uniform float u_bgCropWidth;  // Normalized width of background crop
-            uniform float u_bgCropHeight; // Normalized height of background crop
+            uniform float u_bgCropX;
+            uniform float u_bgCropY;
+            uniform float u_bgCropWidth;
+            uniform float u_bgCropHeight;
 
             varying vec2 v_texCoord;
 
@@ -118,7 +117,6 @@ export class ImageProcessor {
                 vec2 uv = v_texCoord;
                 vec4 color = vec4(0.0);
 
-                // Map UV to cropped background region (rotation handled at vertex level)
                 vec2 bgUV = uv;
                 if (u_bgCropWidth > 0.0 && u_bgCropHeight > 0.0) {
                     bgUV = vec2(
@@ -127,7 +125,6 @@ export class ImageProcessor {
                     );
                 }
                 
-                // Clamp bgUV to [0, 1] to avoid sampling outside texture
                 bgUV = clamp(bgUV, 0.0, 1.0);
                 vec4 bgColor = texture2D(u_bgImage, bgUV);
 
@@ -296,7 +293,7 @@ export class ImageProcessor {
         }
 
         this.positionBuffer = this.gl.createBuffer();
-        this.bgPositionBuffer = this.gl.createBuffer(); // Initialize buffer for background
+        this.bgPositionBuffer = this.gl.createBuffer();
         this.texCoordBuffer = this.gl.createBuffer();
 
         this.texture = this.gl.createTexture();
@@ -342,10 +339,6 @@ export class ImageProcessor {
         this.state.backgroundImage = img;
     }
 
-    cropImages(cropX, cropY, cropWidth, cropHeight) {
-        // ... (unchanged)
-    }
-
     render() {
         if (!this.texture || !this.state.image) {
             console.error("Cannot render: No main image texture or state image.");
@@ -354,6 +347,7 @@ export class ImageProcessor {
 
         const canvasWidth = this.gl.canvas.width;
         const canvasHeight = this.gl.canvas.height;
+        const canvasAspect = canvasWidth / canvasHeight;
 
         // Main image vertices (unrotated, full canvas)
         const positions = new Float32Array([
@@ -363,12 +357,27 @@ export class ImageProcessor {
              1.0, -1.0
         ]);
 
-        // Background image vertices with rotation
+        // Background image positioning for upper fold
+        let bgAspect = this.state.backgroundImage ? (this.state.backgroundImage.width / this.state.backgroundImage.height) : canvasAspect;
+        let bgHeight = 1.0; // Normalized height (top half of canvas in NDC)
+        let bgWidth = bgHeight * bgAspect * (canvasHeight / canvasWidth); // Adjust width based on aspect ratio
+
+        if (bgWidth > 2.0) { // If width exceeds canvas, scale down
+            bgWidth = 2.0;
+            bgHeight = bgWidth / bgAspect * (canvasWidth / canvasHeight);
+        }
+
+        // Position background at the top of the canvas
+        const bgTop = 1.0; // Top of canvas in NDC
+        const bgBottom = bgTop - bgHeight * 2.0; // Shift down by height (times 2 for NDC range -1 to 1)
+        const bgLeft = -bgWidth;
+        const bgRight = bgWidth;
+
         let bgPositions = new Float32Array([
-            -1.0,  1.0,
-             1.0,  1.0,
-            -1.0, -1.0,
-             1.0, -1.0
+            bgLeft,  bgTop,
+            bgRight, bgTop,
+            bgLeft,  bgBottom,
+            bgRight, bgBottom
         ]);
 
         // Apply rotation to background vertices
@@ -377,10 +386,10 @@ export class ImageProcessor {
         const sinA = Math.sin(-bgRotation);
         const rotatedBgPositions = new Float32Array(8);
         for (let i = 0; i < 4; i++) {
-            const x = bgPositions[i * 2];
-            const y = bgPositions[i * 2 + 1];
-            rotatedBgPositions[i * 2] = x * cosA - y * sinA;
-            rotatedBgPositions[i * 2 + 1] = x * sinA + y * cosA;
+            const x = bgPositions[i * 2] - 0.0; // Center rotation at origin
+            const y = bgPositions[i * 2 + 1] - bgTop; // Align rotation pivot to the top
+            rotatedBgPositions[i * 2] = x * cosA - y * sinA + 0.0; // Translate back
+            rotatedBgPositions[i * 2 + 1] = x * sinA + y * cosA + bgTop;
         }
 
         const texCoords = new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]);
@@ -403,13 +412,12 @@ export class ImageProcessor {
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.bgPositionBuffer);
         this.gl.bufferData(this.gl.ARRAY_BUFFER, rotatedBgPositions, this.gl.STATIC_DRAW);
 
-    
         const texCoordLoc = this.gl.getAttribLocation(this.program, 'a_texCoord');
         this.gl.enableVertexAttribArray(texCoordLoc);
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.texCoordBuffer);
         this.gl.bufferData(this.gl.ARRAY_BUFFER, texCoords, this.gl.STATIC_DRAW);
         this.gl.vertexAttribPointer(texCoordLoc, 2, this.gl.FLOAT, false, 0, 0);
-    
+
         this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_brightness'), this.state.adjustments.brightness);
         this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_contrast'), this.state.adjustments.contrast);
         this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_saturation'), this.state.adjustments.saturation);
@@ -442,9 +450,8 @@ export class ImageProcessor {
         this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_scratchTexture'), this.state.adjustments.scratchTexture);
         this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_organicDistortion'), this.state.adjustments.organicDistortion);
         this.gl.uniform1i(this.gl.getUniformLocation(this.program, 'u_showOriginal'), this.state.showOriginal ? 1 : 0);
-        this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_bgRotation'), (this.state.backgroundCropSettings ? this.state.backgroundCropSettings.rotation : 0) * Math.PI / 180.0);
-        
-        // Set background crop uniforms (normalized to texture space)
+        this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_bgRotation'), bgRotation);
+
         const bgCrop = this.state.backgroundCropSettings;
         if (bgCrop && this.state.backgroundImage) {
             const bgWidth = this.state.backgroundImage.width;
@@ -453,27 +460,27 @@ export class ImageProcessor {
             this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_bgCropY'), bgCrop.y / bgHeight);
             this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_bgCropWidth'), bgCrop.width / bgWidth);
             this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_bgCropHeight'), bgCrop.height / bgHeight);
-        }else {
+        } else {
             this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_bgCropX'), 0.0);
             this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_bgCropY'), 0.0);
             this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_bgCropWidth'), 1.0);
             this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_bgCropHeight'), 1.0);
         }
-    
+
         const maxTextureUnits = this.gl.getParameter(this.gl.MAX_TEXTURE_IMAGE_UNITS);
         if (maxTextureUnits < 2) {
             console.error("WebGL context does not support enough texture units (requires at least 2).");
             return;
         }
-    
+
         this.gl.activeTexture(this.gl.TEXTURE0);
         this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
         this.gl.uniform1i(this.gl.getUniformLocation(this.program, 'u_image'), 0);
-    
+
         this.gl.activeTexture(this.gl.TEXTURE1);
         this.gl.bindTexture(this.gl.TEXTURE_2D, this.state.backgroundImage ? this.bgTexture : this.texture);
         this.gl.uniform1i(this.gl.getUniformLocation(this.program, 'u_bgImage'), 1);
-    
+
         this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
     }
 }

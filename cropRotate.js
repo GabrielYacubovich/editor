@@ -47,37 +47,35 @@ export class CropRotate {
         this.cropImage.src = isBackground ? this.state.originalBackgroundImage.src : this.state.originalImage.src;
         this.originalWidth = isBackground ? this.state.originalBackgroundImage.width : this.state.originalImage.width;
         this.originalHeight = isBackground ? this.state.originalBackgroundImage.height : this.state.originalImage.height;
-    
+
         const initializeCrop = () => {
             this.maxCanvasWidth = window.innerWidth * 0.9;
             this.maxCanvasHeight = 700;
             const buffer = 10;
-    
-            const referenceWidth = this.originalWidth;
-            const referenceHeight = this.originalHeight;
-            const maxDimension = Math.max(referenceWidth, referenceHeight);
+
+            const maxDimension = Math.max(this.originalWidth, this.originalHeight);
             const maxRotatedSize = maxDimension * Math.sqrt(2);
-    
+
             this.fixedScale = Math.min((this.maxCanvasWidth - buffer) / maxRotatedSize, (this.maxCanvasHeight - buffer) / maxRotatedSize, 1);
-    
+
             const fullWidth = Math.round(maxRotatedSize * this.fixedScale);
             const fullHeight = Math.round(maxRotatedSize * this.fixedScale);
-    
+
             this.cropCanvas.width = fullWidth;
             this.cropCanvas.height = fullHeight;
             this.cropCanvas.dataset.scaleFactor = this.fixedScale;
             this.cropCanvas.style.width = `${fullWidth}px`;
             this.cropCanvas.style.height = `${fullHeight}px`;
-    
+
             this.effectsCanvas.width = fullWidth;
             this.effectsCanvas.height = fullHeight;
             this.effectsProcessor.setImage(this.cropImage);
-    
+
             const currentSettings = isBackground ? this.state.backgroundCropSettings : this.state.cropSettings;
-            const rotatedBounds = this.getRotatedImageBounds(this.originalWidth, this.originalHeight, this.rotation, this.fixedScale);
             const lastCropRect = isBackground ? this.state.lastBackgroundCropRect : this.state.lastMainCropRect;
-    
-            // Prioritize specific lastCropRect if it exists and matches the image dimensions
+            const bounds = this.getRotatedImageBounds(this.originalWidth, this.originalHeight, this.rotation, this.fixedScale);
+
+            // Prioritize lastCropRect if available and valid
             if (
                 lastCropRect &&
                 lastCropRect.originalWidth === this.originalWidth &&
@@ -94,50 +92,47 @@ export class CropRotate {
                 };
                 this.lockAspectRatio = isBackground || (this.state.mainCropAspectRatio !== undefined);
                 if (this.lockAspectRatio) {
-                    this.aspectRatio = this.state.mainCropAspectRatio || (this.cropRect.width / this.cropRect.height);
+                    this.aspectRatio = isBackground ? this.state.mainCropAspectRatio : (this.cropRect.width / this.cropRect.height);
                 }
             } else if (currentSettings && currentSettings.width && currentSettings.height) {
                 const cropWidth = currentSettings.width * this.fixedScale;
                 const cropHeight = currentSettings.height * this.fixedScale;
-                const cropX = currentSettings.x * this.fixedScale + rotatedBounds.x;
-                const cropY = currentSettings.y * this.fixedScale + rotatedBounds.y;
-    
+                const cropX = currentSettings.x * this.fixedScale + bounds.x;
+                const cropY = currentSettings.y * this.fixedScale + bounds.y;
+
                 this.cropRect = {
-                    x: this.clamp(cropX, rotatedBounds.x, rotatedBounds.x + rotatedBounds.width - cropWidth),
-                    y: this.clamp(cropY, rotatedBounds.y, rotatedBounds.y + rotatedBounds.height - cropHeight),
-                    width: this.clamp(cropWidth, 10, rotatedBounds.width),
-                    height: this.clamp(cropHeight, 10, rotatedBounds.height)
+                    x: this.clamp(cropX, bounds.x, bounds.x + bounds.width - cropWidth),
+                    y: this.clamp(cropY, bounds.y, bounds.y + bounds.height - cropHeight),
+                    width: this.clamp(cropWidth, 10, bounds.width),
+                    height: this.clamp(cropHeight, 10, bounds.height)
                 };
-    
                 this.lockAspectRatio = isBackground || (this.state.mainCropAspectRatio !== undefined);
                 if (this.lockAspectRatio) {
-                    this.aspectRatio = this.state.mainCropAspectRatio || (currentSettings.width / currentSettings.height);
+                    this.aspectRatio = isBackground ? this.state.mainCropAspectRatio : (currentSettings.width / currentSettings.height);
                 }
                 this.rotation = currentSettings.rotation || 0;
             } else {
                 this.rotation = 0;
-                const bounds = this.getRotatedImageBounds(this.originalWidth, this.originalHeight, 0, this.fixedScale);
-    
                 if (!isBackground) {
-                    this.cropRect = { 
-                        x: bounds.x, 
-                        y: bounds.y, 
-                        width: bounds.width, 
-                        height: bounds.height 
+                    this.cropRect = {
+                        x: bounds.x,
+                        y: bounds.y,
+                        width: bounds.width,
+                        height: bounds.height
                     };
                     this.lockAspectRatio = false;
                 } else if (isBackground && this.state.image) {
                     this.lockAspectRatio = true;
-                    this.aspectRatio = this.state.mainCropAspectRatio || (this.state.image.width / this.state.image.height);
-    
+                    this.aspectRatio = this.state.mainCropAspectRatio || 1;
+
                     let targetWidth = bounds.width;
                     let targetHeight = targetWidth / this.aspectRatio;
-    
+
                     if (targetHeight > bounds.height) {
                         targetHeight = bounds.height;
                         targetWidth = targetHeight * this.aspectRatio;
                     }
-    
+
                     this.cropRect = {
                         x: bounds.x + (bounds.width - targetWidth) / 2,
                         y: bounds.y + (bounds.height - targetHeight) / 2,
@@ -146,11 +141,11 @@ export class CropRotate {
                     };
                 }
             }
-    
+
             this.cropControls.setupCropControls();
             this.drawCropOverlay();
         };
-    
+
         if (this.cropImage.complete && this.cropImage.naturalWidth !== 0) {
             initializeCrop();
         } else {
@@ -223,12 +218,14 @@ export class CropRotate {
                     rotation: this.rotation,
                     scale: 1
                 };
+                this.state.lastBackgroundCropRect = { ...cropSettings };
                 this.imageProcessor.setBackgroundImage(croppedImage);
                 this.imageProcessor.render();
                 this.cropImage.src = croppedImage.src;
                 this.originalWidth = cropWidth;
                 this.originalHeight = cropHeight;
                 this.effectsProcessor.setImage(croppedImage);
+                // Do not reset cropRect for the background; preserve it for next modal open
                 this.drawCropOverlay();
             } else {
                 const preCropDisplayWidth = parseFloat(this.mainCanvas.style.width) || this.mainCanvas.width;
@@ -238,97 +235,18 @@ export class CropRotate {
                 this.mainCanvas.height = cropHeight;
 
                 this.state.setImage(croppedImage);
-                this.state.cropSettings = { x: 0, y: 0, width: cropWidth, height: cropHeight, rotation: 0, scale: 1 };
+                const previousRotation = this.state.cropSettings ? this.state.cropSettings.rotation : 0;
+                this.state.cropSettings = { 
+                    x: 0, 
+                    y: 0, 
+                    width: cropWidth, 
+                    height: cropHeight, 
+                    rotation: this.rotation || previousRotation,
+                    scale: 1 
+                };
                 this.state.lastMainCropRect = { ...cropSettings };
-                this.state.updateMainCropAspectRatio(cropWidth, cropHeight);
+                this.state.updateMainCropAspectRatio(cropWidth, cropHeight, true);
                 this.imageProcessor.setImage(croppedImage);
-
-                if (this.state.originalBackgroundImage) {
-                    const bgOriginalWidth = this.state.originalBackgroundImage.width;
-                    const bgOriginalHeight = this.state.originalBackgroundImage.height;
-                
-                    const maxDimension = Math.max(bgOriginalWidth, bgOriginalHeight);
-                    const maxRotatedSize = maxDimension * Math.sqrt(2);
-                    const buffer = 10;
-                    const bgScale = Math.min((this.maxCanvasWidth - buffer) / maxRotatedSize, (this.maxCanvasHeight - buffer) / maxRotatedSize, 1);
-                    const fullWidth = Math.round(maxRotatedSize * bgScale);
-                    const fullHeight = Math.round(maxRotatedSize * bgScale);
-                
-                    const tempCropCanvas = document.createElement('canvas');
-                    tempCropCanvas.width = fullWidth;
-                    tempCropCanvas.height = fullHeight;
-                    tempCropCanvas.dataset.scaleFactor = bgScale;
-                
-                    const bounds = this.getRotatedImageBounds(bgOriginalWidth, bgOriginalHeight, 0, bgScale);
-                    const aspectRatio = this.state.mainCropAspectRatio;
-                
-                    let targetWidth = bounds.width;
-                    let targetHeight = targetWidth / aspectRatio;
-                
-                    if (targetHeight > bounds.height) {
-                        targetHeight = bounds.height;
-                        targetWidth = targetHeight * aspectRatio;
-                    }
-                
-                    const bgCropRect = {
-                        x: bounds.x + (bounds.width - targetWidth) / 2,
-                        y: bounds.y + (bounds.height - targetHeight) / 2,
-                        width: targetWidth,
-                        height: targetHeight
-                    };
-                    const existingBgRotation = this.state.backgroundCropSettings?.rotation || 0; // Simplified, as it’s now preserved
-                    const bgAngleRad = existingBgRotation * Math.PI / 180; // Convert to radians
-    const cosA = Math.abs(Math.cos(bgAngleRad));
-    const sinA = Math.abs(Math.sin(bgAngleRad));
-    const bgFullRotatedWidth = Math.ceil(bgOriginalWidth * cosA + bgOriginalHeight * sinA);
-    const bgFullRotatedHeight = Math.ceil(bgOriginalWidth * sinA + bgOriginalHeight * cosA);
-
-                    const bgTempCanvas = document.createElement('canvas');
-                    bgTempCanvas.width = bgFullRotatedWidth;
-                    bgTempCanvas.height = bgFullRotatedHeight;
-                    const bgTempCtx = bgTempCanvas.getContext('2d');
-                    bgTempCtx.imageSmoothingEnabled = true;
-                    bgTempCtx.translate(bgFullRotatedWidth / 2, bgFullRotatedHeight / 2);
-                 bgTempCtx.rotate(bgAngleRad);
-                    bgTempCtx.translate(-bgOriginalWidth / 2, -bgOriginalHeight / 2);
-                    bgTempCtx.drawImage(this.state.originalBackgroundImage, 0, 0, bgOriginalWidth, bgOriginalHeight);
-
-                    const bgOffsetX = (tempCropCanvas.width - bounds.width) / 2;
-                    const bgOffsetY = (tempCropCanvas.height - bounds.height) / 2;
-
-                    const bgCropX = Math.round((bgCropRect.x - bgOffsetX) / bgScale);
-                    const bgCropY = Math.round((bgCropRect.y - bgOffsetY) / bgScale);
-                    const bgCropWidth = Math.round(bgCropRect.width / bgScale);
-                    const bgCropHeight = Math.round(bgCropRect.height / bgScale);
-
-                    const bgCroppedCanvas = document.createElement('canvas');
-                    bgCroppedCanvas.width = bgCropWidth;
-                    bgCroppedCanvas.height = bgCropHeight;
-                    const bgCroppedCtx = bgCroppedCanvas.getContext('2d');
-                    bgCroppedCtx.imageSmoothingEnabled = true;
-                    bgCroppedCtx.drawImage(
-                        bgTempCanvas,
-                        bgCropX, bgCropY, bgCropWidth, bgCropHeight,
-                        0, 0, bgCropWidth, bgCropHeight
-                    );
-
-                    const bgCroppedImage = new Image();
-                    bgCroppedImage.onload = () => {
-                        this.state.setBackgroundImage(bgCroppedImage);
-                        this.state.backgroundCropSettings = {
-                            x: 0,
-                            y: 0,
-                            width: bgCropWidth,
-                            height: bgCropHeight,
-                            rotation: existingBgRotation, // Preserve the rotation
-                            scale: 1
-                        };
-                        this.state.lastBackgroundCropRect = { ...cropSettings };
-                        this.imageProcessor.setBackgroundImage(bgCroppedImage);
-                        this.imageProcessor.render();
-                    };
-                    bgCroppedImage.src = bgCroppedCanvas.toDataURL('image/png');
-                }
 
                 this.imageProcessor.render();
 
@@ -341,17 +259,10 @@ export class CropRotate {
                 this.originalHeight = cropHeight;
                 this.effectsProcessor.setImage(croppedImage);
 
-                const newBounds = this.getRotatedImageBounds(this.originalWidth, this.originalHeight, 0, scaleFactor);
-                this.cropRect = {
-                    x: (this.cropCanvas.width - newBounds.width) / 2,
-                    y: (this.cropCanvas.height - newBounds.height) / 2,
-                    width: newBounds.width,
-                    height: newBounds.height
-                    
-                };
+                // Do not reset cropRect to full bounds; preserve it for next modal open
+                this.drawCropOverlay();
 
                 this.state.cropHistory.push(cropSettings);
-                this.drawCropOverlay();
             }
         };
         croppedImage.src = croppedCanvas.toDataURL('image/png');
@@ -381,9 +292,9 @@ export class CropRotate {
         };
 
         if (this.isBackgroundCrop) {
-            this.state.lastBackgroundCropRect = lastCropRect;
+            this.state.lastBackgroundCropRect = { ...lastCropRect };
         } else {
-            this.state.lastMainCropRect = lastCropRect;
+            this.state.lastMainCropRect = { ...lastCropRect };
         }
 
         this.cropModal.style.display = 'none';
@@ -411,7 +322,7 @@ export class CropRotate {
         const bounds = this.getRotatedImageBounds(this.originalWidth, this.originalHeight, rotation, this.fixedScale);
         if (this.isBackgroundCrop && this.state.image) {
             this.lockAspectRatio = true;
-            this.aspectRatio = this.state.mainCropAspectRatio || (this.state.image.width / this.state.image.height);
+            this.aspectRatio = this.state.mainCropAspectRatio || 1;
 
             let targetWidth = bounds.width;
             let targetHeight = targetWidth / this.aspectRatio;

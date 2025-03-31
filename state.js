@@ -48,8 +48,8 @@ export class State {
         this.cropHistory = [];
         this.backgroundCropSettings = null;
         this.backgroundCropHistory = [];
-        this.lastMainCropRect = null;      // Separate state for main image last crop
-        this.lastBackgroundCropRect = null; // Separate state for background image last crop
+        this.lastMainCropRect = null;
+        this.lastBackgroundCropRect = null;
     }
 
     setImage(img) {
@@ -241,23 +241,15 @@ export class State {
         this.adjustments = { ...stateSnapshot.adjustments };
     }
 
-    updateMainCropAspectRatio(width, height) {
-        const previousBgRotation = this.backgroundCropSettings?.rotation || this.lastBackgroundCropRect?.rotation || 0; // Capture current rotation
+    updateMainCropAspectRatio(width, height, affectBackground = false) {
         this.mainCropAspectRatio = width / height;
-        // Clear background crop settings to force update
-        this.backgroundCropSettings = null;
-        this.backgroundCropHistory = [];
-        this.lastBackgroundCropRect = null;
-        // Restore the rotation if it existed
-        if (this.backgroundImage) {
-            this.backgroundCropSettings = {
-                x: 0,
-                y: 0,
-                width: this.backgroundImage.width,
-                height: this.backgroundImage.height,
-                rotation: previousBgRotation,
-                scale: 1
-            };
+
+        if (affectBackground && this.backgroundImage && this.backgroundCropSettings) {
+            // Only update the aspect ratio of the BG crop rect, preserving other properties
+            const currentBgWidth = this.backgroundCropSettings.width;
+            const currentBgHeight = currentBgWidth / this.mainCropAspectRatio;
+            this.backgroundCropSettings.height = currentBgHeight;
+            // Do not modify x, y, rotation, or scale
         }
     }
 }
