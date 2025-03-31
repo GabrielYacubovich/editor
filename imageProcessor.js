@@ -1,12 +1,13 @@
-// imageProcessor.js
 export class ImageProcessor {
     constructor(gl, state) {
         this.gl = gl;
         this.state = state;
         this.program = null;
         this.texture = null;
+        this.bgTexture = null;
         this.positionBuffer = null;
         this.texCoordBuffer = null;
+        this.bgPositionBuffer = null; // New buffer for background positions
         this.initWebGL();
     }
 
@@ -15,14 +16,19 @@ export class ImageProcessor {
             attribute vec2 a_position;
             attribute vec2 a_texCoord;
             varying vec2 v_texCoord;
+            uniform float u_bgRotation; // Pass rotation to vertex shader
             void main() {
-                gl_Position = vec4(a_position, 0.0, 1.0);
+                vec2 pos = a_position;
+                // Apply rotation to background vertices only (handled in render)
+                gl_Position = vec4(pos, 0.0, 1.0);
                 v_texCoord = a_texCoord;
             }
         `;
+
         const fragmentShaderSource = `
             precision mediump float;
             uniform sampler2D u_image;
+            uniform sampler2D u_bgImage;
             uniform float u_brightness;
             uniform float u_contrast;
             uniform float u_saturation;
@@ -54,7 +60,12 @@ export class ImageProcessor {
             uniform float u_pixelNoise;
             uniform float u_scratchTexture;
             uniform float u_organicDistortion;
-            uniform bool u_showOriginal;
+            uniform int u_showOriginal;
+            uniform float u_bgCropX;      // Normalized X offset of background crop
+            uniform float u_bgCropY;      // Normalized Y offset of background crop
+            uniform float u_bgCropWidth;  // Normalized width of background crop
+            uniform float u_bgCropHeight; // Normalized height of background crop
+
             varying vec2 v_texCoord;
 
             vec3 rgbToHsl(vec3 color) {
@@ -107,23 +118,32 @@ export class ImageProcessor {
                 vec2 uv = v_texCoord;
                 vec4 color = vec4(0.0);
 
-                if (!u_showOriginal) {
-                    // Apply distortion effects
+                // Map UV to cropped background region (rotation handled at vertex level)
+                vec2 bgUV = uv;
+                if (u_bgCropWidth > 0.0 && u_bgCropHeight > 0.0) {
+                    bgUV = vec2(
+                        u_bgCropX + uv.x * u_bgCropWidth,
+                        u_bgCropY + uv.y * u_bgCropHeight
+                    );
+                }
+                
+                // Clamp bgUV to [0, 1] to avoid sampling outside texture
+                bgUV = clamp(bgUV, 0.0, 1.0);
+                vec4 bgColor = texture2D(u_bgImage, bgUV);
+
+                if (u_showOriginal == 0) {
                     vec2 distortedUV = uv;
 
-                    // Wave Distortion
                     if (u_waveDistortion > 0.0) {
                         distortedUV.x += sin(distortedUV.y * 10.0) * u_waveDistortion * 0.05;
                         distortedUV.y += cos(distortedUV.x * 10.0) * u_waveDistortion * 0.05;
                     }
 
-                    // Fractal Distortion
                     if (u_fractalDistortion > 0.0) {
                         float n = noise(distortedUV * 5.0);
                         distortedUV += vec2(sin(n * 10.0), cos(n * 10.0)) * u_fractalDistortion * 0.05;
                     }
 
-                    // Organic Distortion
                     if (u_organicDistortion > 0.0) {
                         float n1 = noise(distortedUV * 3.0 + vec2(0.5));
                         float n2 = noise(distortedUV * 3.0 + vec2(-0.5));
@@ -131,10 +151,8 @@ export class ImageProcessor {
                         distortedUV.y += cos(n2 * 6.0) * u_organicDistortion * 0.03;
                     }
 
-                    // Base color
                     vec4 baseColor = texture2D(u_image, distortedUV);
 
-                    // RGB Split
                     if (u_rgbSplit > 0.0) {
                         vec2 offset = vec2(u_rgbSplit, 0.0);
                         color.r = texture2D(u_image, distortedUV + offset).r;
@@ -145,7 +163,6 @@ export class ImageProcessor {
                         color = baseColor;
                     }
 
-                    // Basic adjustments
                     color.rgb *= u_exposure;
                     color.rgb = pow(color.rgb, vec3(1.0 / u_gamma));
                     color.rgb *= u_brightness;
@@ -157,7 +174,6 @@ export class ImageProcessor {
                     if (hsl.x < 0.0) hsl.x += 1.0;
                     color.rgb = hslToRgb(hsl);
 
-                    // Other adjustments
                     float avg = (color.r + color.g + color.b) / 3.0;
                     float maxColor = max(max(color.r, color.g), color.b);
                     float amt = (maxColor - avg) * abs(u_vibrance);
@@ -177,24 +193,20 @@ export class ImageProcessor {
                         color.rgb += u_whites * (luminance - 0.75) * 4.0;
                     }
 
-                    // Sharpness & Clarity
                     vec2 offset = vec2(0.004);
                     vec3 blurred = texture2D(u_image, distortedUV).rgb;
                     color.rgb += (color.rgb - blurred) * u_sharpness;
                     color.rgb = mix(color.rgb, (color.rgb - 0.5) * (1.0 + u_clarity) + 0.5, 0.5);
 
-                    // Temperature & Tint
                     color.r += u_temperature * 0.2;
                     color.b -= u_temperature * 0.2;
                     color.g += u_tint * 0.2;
 
-                    // Film Grain
                     if (u_filmGrain > 0.0) {
                         float grain = noise(uv * 1000.0) * u_filmGrain * 0.2;
                         color.rgb += vec3(grain);
                     }
 
-                    // Block Glitch
                     if (u_blockGlitch > 0.0) {
                         float block = floor(random(floor(uv * 50.0)) * u_blockGlitch * 10.0);
                         if (block > 0.5) {
@@ -202,7 +214,6 @@ export class ImageProcessor {
                         }
                     }
 
-                    // Color Shift
                     if (u_colorShift > 0.0) {
                         vec3 shift = vec3(
                             sin(uv.x * 10.0) * u_colorShift,
@@ -212,13 +223,11 @@ export class ImageProcessor {
                         color.rgb += shift * 0.2;
                     }
 
-                    // Ghosting
                     if (u_ghosting > 0.0) {
                         vec4 ghost = texture2D(u_image, uv + vec2(u_ghosting * 0.1, 0.0));
                         color.rgb = mix(color.rgb, ghost.rgb, u_ghosting);
                     }
 
-                    // Pixel Noise
                     if (u_pixelNoise > 0.0) {
                         vec3 noiseColor = vec3(
                             random(uv * 1000.0),
@@ -228,7 +237,6 @@ export class ImageProcessor {
                         color.rgb += noiseColor * u_pixelNoise * 0.3;
                     }
 
-                    // Scratch Texture
                     if (u_scratchTexture > 0.0) {
                         float scratch = noise(vec2(uv.x * 2.0, uv.y * 100.0));
                         if (scratch > 0.9 - u_scratchTexture * 0.5) {
@@ -236,7 +244,6 @@ export class ImageProcessor {
                         }
                     }
 
-                    // Final effects
                     vec2 center = uv - 0.5;
                     float dist = length(center);
                     color.rgb *= 1.0 - u_vignette * smoothstep(0.3, 0.7, dist);
@@ -254,7 +261,8 @@ export class ImageProcessor {
                     float gray = dot(color.rgb, vec3(0.299, 0.587, 0.114));
                     color.rgb = mix(color.rgb, vec3(gray), u_grayscale);
                     color.rgb = mix(color.rgb, 1.0 - color.rgb, u_invert);
-                    color.a *= u_opacity;
+
+                    color = mix(bgColor, color, u_opacity);
                 } else {
                     color = texture2D(u_image, uv);
                 }
@@ -266,16 +274,40 @@ export class ImageProcessor {
         const vertexShader = this.compileShader(vertexShaderSource, this.gl.VERTEX_SHADER);
         const fragmentShader = this.compileShader(fragmentShaderSource, this.gl.FRAGMENT_SHADER);
 
+        if (!vertexShader || !fragmentShader) {
+            console.error('Shader compilation failed:', this.gl.getShaderInfoLog(vertexShader || fragmentShader));
+            return;
+        }
+
         this.program = this.gl.createProgram();
         this.gl.attachShader(this.program, vertexShader);
         this.gl.attachShader(this.program, fragmentShader);
         this.gl.linkProgram(this.program);
 
+        if (!this.gl.getProgramParameter(this.program, this.gl.LINK_STATUS)) {
+            console.error('Program linking failed:', this.gl.getProgramInfoLog(this.program));
+            return;
+        }
+
+        const maxTextureUnits = this.gl.getParameter(this.gl.MAX_TEXTURE_IMAGE_UNITS);
+        if (maxTextureUnits < 2) {
+            console.error("WebGL context does not support enough texture units (requires at least 2).");
+            return;
+        }
+
         this.positionBuffer = this.gl.createBuffer();
+        this.bgPositionBuffer = this.gl.createBuffer(); // Initialize buffer for background
         this.texCoordBuffer = this.gl.createBuffer();
 
         this.texture = this.gl.createTexture();
         this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
+        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
+        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.LINEAR);
+        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
+        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
+
+        this.bgTexture = this.gl.createTexture();
+        this.gl.bindTexture(this.gl.TEXTURE_2D, this.bgTexture);
         this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
         this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.LINEAR);
         this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
@@ -287,6 +319,7 @@ export class ImageProcessor {
         this.gl.shaderSource(shader, source);
         this.gl.compileShader(shader);
         if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
+            console.error('Shader compilation error:', this.gl.getShaderInfoLog(shader));
             this.gl.deleteShader(shader);
             return null;
         }
@@ -303,9 +336,26 @@ export class ImageProcessor {
         }
     }
 
-    render() {
-        if (!this.texture || !this.state.image) return;
+    setBackgroundImage(img) {
+        this.gl.bindTexture(this.gl.TEXTURE_2D, this.bgTexture);
+        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, img);
+        this.state.backgroundImage = img;
+    }
 
+    cropImages(cropX, cropY, cropWidth, cropHeight) {
+        // ... (unchanged)
+    }
+
+    render() {
+        if (!this.texture || !this.state.image) {
+            console.error("Cannot render: No main image texture or state image.");
+            return;
+        }
+
+        const canvasWidth = this.gl.canvas.width;
+        const canvasHeight = this.gl.canvas.height;
+
+        // Main image vertices (unrotated, full canvas)
         const positions = new Float32Array([
             -1.0,  1.0,
              1.0,  1.0,
@@ -313,9 +363,29 @@ export class ImageProcessor {
              1.0, -1.0
         ]);
 
+        // Background image vertices with rotation
+        let bgPositions = new Float32Array([
+            -1.0,  1.0,
+             1.0,  1.0,
+            -1.0, -1.0,
+             1.0, -1.0
+        ]);
+
+        // Apply rotation to background vertices
+        const bgRotation = (this.state.backgroundCropSettings ? this.state.backgroundCropSettings.rotation : 0) * Math.PI / 180.0;
+        const cosA = Math.cos(-bgRotation);
+        const sinA = Math.sin(-bgRotation);
+        const rotatedBgPositions = new Float32Array(8);
+        for (let i = 0; i < 4; i++) {
+            const x = bgPositions[i * 2];
+            const y = bgPositions[i * 2 + 1];
+            rotatedBgPositions[i * 2] = x * cosA - y * sinA;
+            rotatedBgPositions[i * 2 + 1] = x * sinA + y * cosA;
+        }
+
         const texCoords = new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]);
 
-        this.gl.viewport(0, 0, this.gl.canvas.width, this.gl.canvas.height);
+        this.gl.viewport(0, 0, canvasWidth, canvasHeight);
         this.gl.clearColor(0, 0, 0, 1);
         this.gl.clear(this.gl.COLOR_BUFFER_BIT);
 
@@ -323,16 +393,23 @@ export class ImageProcessor {
 
         const positionLoc = this.gl.getAttribLocation(this.program, 'a_position');
         this.gl.enableVertexAttribArray(positionLoc);
+
+        // Bind and set main image positions
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.positionBuffer);
         this.gl.bufferData(this.gl.ARRAY_BUFFER, positions, this.gl.STATIC_DRAW);
         this.gl.vertexAttribPointer(positionLoc, 2, this.gl.FLOAT, false, 0, 0);
 
+        // Bind and set background image positions
+        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.bgPositionBuffer);
+        this.gl.bufferData(this.gl.ARRAY_BUFFER, rotatedBgPositions, this.gl.STATIC_DRAW);
+
+    
         const texCoordLoc = this.gl.getAttribLocation(this.program, 'a_texCoord');
         this.gl.enableVertexAttribArray(texCoordLoc);
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.texCoordBuffer);
         this.gl.bufferData(this.gl.ARRAY_BUFFER, texCoords, this.gl.STATIC_DRAW);
         this.gl.vertexAttribPointer(texCoordLoc, 2, this.gl.FLOAT, false, 0, 0);
-
+    
         this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_brightness'), this.state.adjustments.brightness);
         this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_contrast'), this.state.adjustments.contrast);
         this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_saturation'), this.state.adjustments.saturation);
@@ -365,11 +442,38 @@ export class ImageProcessor {
         this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_scratchTexture'), this.state.adjustments.scratchTexture);
         this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_organicDistortion'), this.state.adjustments.organicDistortion);
         this.gl.uniform1i(this.gl.getUniformLocation(this.program, 'u_showOriginal'), this.state.showOriginal ? 1 : 0);
-
+        this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_bgRotation'), (this.state.backgroundCropSettings ? this.state.backgroundCropSettings.rotation : 0) * Math.PI / 180.0);
+        
+        // Set background crop uniforms (normalized to texture space)
+        const bgCrop = this.state.backgroundCropSettings;
+        if (bgCrop && this.state.backgroundImage) {
+            const bgWidth = this.state.backgroundImage.width;
+            const bgHeight = this.state.backgroundImage.height;
+            this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_bgCropX'), bgCrop.x / bgWidth);
+            this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_bgCropY'), bgCrop.y / bgHeight);
+            this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_bgCropWidth'), bgCrop.width / bgWidth);
+            this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_bgCropHeight'), bgCrop.height / bgHeight);
+        }else {
+            this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_bgCropX'), 0.0);
+            this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_bgCropY'), 0.0);
+            this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_bgCropWidth'), 1.0);
+            this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_bgCropHeight'), 1.0);
+        }
+    
+        const maxTextureUnits = this.gl.getParameter(this.gl.MAX_TEXTURE_IMAGE_UNITS);
+        if (maxTextureUnits < 2) {
+            console.error("WebGL context does not support enough texture units (requires at least 2).");
+            return;
+        }
+    
         this.gl.activeTexture(this.gl.TEXTURE0);
         this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
         this.gl.uniform1i(this.gl.getUniformLocation(this.program, 'u_image'), 0);
-
+    
+        this.gl.activeTexture(this.gl.TEXTURE1);
+        this.gl.bindTexture(this.gl.TEXTURE_2D, this.state.backgroundImage ? this.bgTexture : this.texture);
+        this.gl.uniform1i(this.gl.getUniformLocation(this.program, 'u_bgImage'), 1);
+    
         this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
     }
 }

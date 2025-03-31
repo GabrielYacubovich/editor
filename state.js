@@ -1,9 +1,10 @@
-// state.js
 export class State {
     constructor(canvas) {
         this.canvas = canvas;
         this.originalImage = null;
         this.image = null;
+        this.originalBackgroundImage = null;
+        this.backgroundImage = null;
         this.adjustments = {
             brightness: 1.0,
             contrast: 1.0,
@@ -38,13 +39,17 @@ export class State {
             organicDistortion: 0.0
         };
         this.aspectRatio = 1;
+        this.mainCropAspectRatio = null;
         this.history = [];
         this.historyIndex = -1;
         this.redoStack = [];
         this.showOriginal = false;
         this.cropSettings = null;
         this.cropHistory = [];
-        this.lastCropRect = null;
+        this.backgroundCropSettings = null;
+        this.backgroundCropHistory = [];
+        this.lastMainCropRect = null;      // Separate state for main image last crop
+        this.lastBackgroundCropRect = null; // Separate state for background image last crop
     }
 
     setImage(img) {
@@ -54,6 +59,16 @@ export class State {
         }
         this.image = img;
         this.aspectRatio = img.width / img.height;
+        if (!this.mainCropAspectRatio) {
+            this.mainCropAspectRatio = this.aspectRatio;
+        }
+    }
+
+    setBackgroundImage(img) {
+        if (!this.originalBackgroundImage) {
+            this.originalBackgroundImage = img;
+        }
+        this.backgroundImage = img;
     }
 
     setAdjustment(key, value) {
@@ -106,15 +121,20 @@ export class State {
         this.history = [];
         this.historyIndex = -1;
         this.redoStack = [];
-        this.lastCropRect = null;
+        this.lastMainCropRect = null;
+        this.lastBackgroundCropRect = null;
         this.addInitialStateToHistory();
     }
 
     resetForNewImage(img) {
         this.originalImage = null;
         this.image = null;
+        this.originalBackgroundImage = null;
+        this.backgroundImage = null;
         this.cropHistory = [];
-        this.lastCropRect = null;
+        this.backgroundCropHistory = [];
+        this.lastMainCropRect = null;
+        this.lastBackgroundCropRect = null;
         this.adjustments = {
             brightness: 1.0,
             contrast: 1.0,
@@ -149,12 +169,23 @@ export class State {
             organicDistortion: 0.0
         };
         this.aspectRatio = 1;
+        this.mainCropAspectRatio = null;
         this.history = [];
         this.historyIndex = -1;
         this.redoStack = [];
         this.showOriginal = false;
         this.cropSettings = null;
+        this.backgroundCropSettings = null;
         this.setImage(img);
+    }
+
+    resetBackgroundToOriginal() {
+        if (this.originalBackgroundImage) {
+            this.backgroundImage = this.originalBackgroundImage;
+            this.backgroundCropSettings = null;
+            this.backgroundCropHistory = [];
+            this.lastBackgroundCropRect = null;
+        }
     }
 
     toggleOriginal() {
@@ -208,5 +239,25 @@ export class State {
 
     applyState(stateSnapshot) {
         this.adjustments = { ...stateSnapshot.adjustments };
+    }
+
+    updateMainCropAspectRatio(width, height) {
+        const previousBgRotation = this.backgroundCropSettings?.rotation || this.lastBackgroundCropRect?.rotation || 0; // Capture current rotation
+        this.mainCropAspectRatio = width / height;
+        // Clear background crop settings to force update
+        this.backgroundCropSettings = null;
+        this.backgroundCropHistory = [];
+        this.lastBackgroundCropRect = null;
+        // Restore the rotation if it existed
+        if (this.backgroundImage) {
+            this.backgroundCropSettings = {
+                x: 0,
+                y: 0,
+                width: this.backgroundImage.width,
+                height: this.backgroundImage.height,
+                rotation: previousBgRotation,
+                scale: 1
+            };
+        }
     }
 }
